@@ -11,8 +11,7 @@ cd ~/Desktop/Resume_top
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
-# add OPENAI_API_KEY to .env for rewritten bullets
+# create a local .env (not committed) and add OPENAI_API_KEY for rewritten bullets
 ```
 
 Cursor shows PDFs as raw `%PDF` source. Open generated files in Preview or Chrome.
