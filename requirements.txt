@@ -1,0 +1,11 @@
+fastapi>=0.115.0
+uvicorn>=0.32.0
+pydantic>=2.9.0
+python-dotenv>=1.0.0
+openai>=1.50.0
+fpdf2>=2.8.0
+typst>=0.13.0
+pytest>=8.0.0
+httpx>=0.27.0
+bcrypt>=4.2.0
+

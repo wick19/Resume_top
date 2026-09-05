@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Resume Tailor</title>
+    <style>
+      body { font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; width: 320px; margin: 12px; }
+      label { display: block; margin-top: 8px; font-weight: 600; }
+      input, textarea { width: 100%; box-sizing: border-box; margin-top: 4px; }
+      textarea { height: 120px; }
+      button { margin-top: 10px; width: 100%; padding: 8px; }
+      #status { margin-top: 8px; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <strong>Resume Tailor</strong>
+    <label>Company <input id="company" /></label>
+    <label>Role <input id="role" /></label>
+    <label>Job description
+      <textarea id="jd" placeholder="Click Read page if this is empty"></textarea>
+    </label>
+    <button id="read">Read page</button>
+    <button id="tailor">Tailor resume</button>
+    <div id="status"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Resume Tailor",
+  "version": "0.1.0",
+  "description": "Send the current job description to the local Resume Tailor API.",
+  "action": {
+    "default_title": "Resume Tailor",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["http://127.0.0.1:8000/*"]
+}

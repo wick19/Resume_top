@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      HOST: 0.0.0.0
+      LIBRARY_DIR: /app/library
+      LIBRARY_DB: /app/library/library.db
+    volumes:
+      - resume-files:/app/library
+    restart: unless-stopped
+
+volumes:
+  resume-files:

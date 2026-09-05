@@ -1,0 +1,12 @@
+We are hiring an AI Engineer to own production FastAPI microservices and LLM-powered workflows.
+
+Requirements:
+- Python, FastAPI, PostgreSQL, Redis
+- LLM orchestration, prompt engineering, provider routing, caching
+- Asynchronous pipelines, retries, rate limiting
+- Docker, Kubernetes, GitHub Actions, CI/CD
+- REST APIs, OAuth2 / JWT
+
+Nice to have: LangChain, RAG, React, TypeScript.
+
+You will reduce LLM/provider cost, improve reliability, and ship backend features used by enterprise GTM teams.

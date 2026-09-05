@@ -1,0 +1,389 @@
+{
+  "profile": {
+    "name": "Ritwik",
+    "phone": "+917250146461",
+    "email": "ritwikshandilya1999@gmail.com",
+    "linkedin": "https://www.linkedin.com/in/ritwik-k-527914151/",
+    "linkedin_label": "LinkedIn",
+    "github": "https://github.com/wick19",
+    "github_label": "GitHub",
+    "portfolio": "https://wick19.github.io/web-portfolio/",
+    "portfolio_label": "Portfolio",
+    "location": "Bengaluru, Karnataka, India"
+  },
+  "default_summary": "AI Engineer who builds AI-powered, full-stack products end to end, from data and AI workflows to Python backend services and user-facing applications. Designed and owned production systems that turn complex, fragmented data into searchable, actionable products, and shipped customer-facing features across the stack. Experienced in Generative AI, NLP, retrieval systems, Python backend engineering, and production cloud-native software delivery.",
+  "metrics_lock": [
+    { "id": "m.api20", "value": "20%", "source_fact_id": "role.tekgigz.b2" },
+    { "id": "m.query25", "value": "25%", "source_fact_id": "role.tekgigz.b3" },
+    { "id": "m.support10", "value": "10%", "source_fact_id": "role.tekgigz.b4" },
+    { "id": "m.deploy15", "value": "15%", "source_fact_id": "role.tekgigz.b5" },
+    { "id": "m.release30", "value": "30%", "source_fact_id": "role.tekgigz.b5" },
+    { "id": "m.ui20", "value": "20%", "source_fact_id": "role.onshape.b4" }
+  ],
+  "roles": [
+    {
+      "id": "role.sprouts",
+      "company": "Sprouts.ai",
+      "title": "AI Engineer",
+      "start": "Sep 2025",
+      "end": "Present",
+      "location": "Bengaluru, Karnataka, India",
+      "include_by_default": true,
+      "recency_rank": 1,
+      "domains": ["ai", "backend", "platform", "fullstack", "gtm"],
+      "stack": [
+        "Python", "FastAPI", "PostgreSQL", "SQLAlchemy", "Redis", "OAuth2", "JWT",
+        "Alembic", "React", "TypeScript", "Docker", "Kubernetes", "GitHub Actions",
+        "Helm", "REST APIs", "LLMs"
+      ],
+      "bullets": [
+        {
+          "id": "role.sprouts.b1",
+          "text": "Designed production Generative AI and NLP pipelines for enterprise contact enrichment using LLM reasoning, semantic retrieval, and entity resolution over a large-scale Elasticsearch index, supporting reliable enrichment and search decisions.",
+          "skills": ["Generative AI", "NLP", "LLMs", "Elasticsearch", "semantic retrieval", "entity resolution"],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.sprouts.b2",
+          "text": "Built production AI inference and retrieval services using Azure OpenAI, Hugging Face Transformers, TensorFlow, and PyTorch for chat, embeddings, batch processing, ranking, and semantic search workflows.",
+          "skills": ["Azure OpenAI", "Hugging Face Transformers", "TensorFlow", "PyTorch", "embeddings", "semantic search"],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.sprouts.b3",
+          "text": "Developed full-stack product features using TypeScript, React, Next.js, Vite, and Tailwind CSS, including intelligence dashboards, graph-based discovery, network visualizations, hierarchy views, and AI-powered workflows, collaborating on designs with Figma and Claude Design.",
+          "skills": ["TypeScript", "React", "Next.js", "Vite", "Tailwind CSS", "Figma"],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.sprouts.b4",
+          "text": "Owned two production FastAPI microservices for enrichment orchestration with JWT, OAuth2, multi-tenant RBAC, provider routing, asynchronous processing, caching, rate limiting, and bulk processing, while contributing to authentication, search, and workflow APIs.",
+          "skills": ["FastAPI", "microservices", "JWT", "OAuth2", "asynchronous execution", "caching", "provider orchestration"],
+          "locked_numbers": ["two"]
+        },
+        {
+          "id": "role.sprouts.b5",
+          "text": "Engineered data processing and retrieval evaluation workflows covering preprocessing, normalization, feature engineering, and query-regression testing, and operated production services on Linux, Docker, Kubernetes, GitHub Actions, and Helm with CI/CD.",
+          "skills": ["Feature Engineering", "Linux", "Docker", "Kubernetes", "GitHub Actions", "Helm", "CI/CD"],
+          "locked_numbers": []
+        }
+      ]
+    },
+    {
+      "id": "role.tekgigz",
+      "company": "TekGigz LLC",
+      "title": "Python Full Stack Developer",
+      "start": "Feb 2024",
+      "end": "Jan 2025",
+      "location": "Frisco, Texas, USA",
+      "include_by_default": true,
+      "recency_rank": 2,
+      "domains": ["fullstack", "backend", "fintech", "data"],
+      "stack": [
+        "Python", "Flask", "Django", "PostgreSQL", "REST APIs", "HTML5", "CSS3",
+        "JavaScript", "PyTest", "Jenkins", "Docker", "Heroku"
+      ],
+      "bullets": [
+        {
+          "id": "role.tekgigz.b1",
+          "text": "Developed a finance-focused web application using Python, Flask, Django, and PostgreSQL to streamline transaction processing, vendor management, and real-time financial reporting.",
+          "skills": ["Python", "Flask", "Django", "PostgreSQL"],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.tekgigz.b2",
+          "text": "Designed and implemented secure RESTful APIs for financial data management, improving application modularity and reducing API response times by 20%.",
+          "skills": ["REST APIs", "Python"],
+          "locked_numbers": ["20%"]
+        },
+        {
+          "id": "role.tekgigz.b3",
+          "text": "Optimized PostgreSQL database schemas and SQL queries, improving query performance by 25% and enhancing application scalability.",
+          "skills": ["PostgreSQL", "SQL"],
+          "locked_numbers": ["25%"]
+        },
+        {
+          "id": "role.tekgigz.b4",
+          "text": "Built responsive frontend components using HTML5, CSS3, and JavaScript, improving reporting dashboards and reducing user support requests by 10%.",
+          "skills": ["HTML5", "CSS3", "JavaScript"],
+          "locked_numbers": ["10%"]
+        },
+        {
+          "id": "role.tekgigz.b5",
+          "text": "Created automated test suites with PyTest and integrated CI/CD pipelines using Jenkins and Docker, reducing deployment issues by 15% and accelerating release cycles by 30%.",
+          "skills": ["PyTest", "Jenkins", "Docker", "CI/CD"],
+          "locked_numbers": ["15%", "30%"]
+        },
+        {
+          "id": "role.tekgigz.b6",
+          "text": "Deployed production applications on Heroku and collaborated within Agile teams to deliver features through sprint planning, code reviews, and iterative development.",
+          "skills": ["Heroku", "Agile"],
+          "locked_numbers": []
+        }
+      ]
+    },
+    {
+      "id": "role.onshape",
+      "company": "PTC Onshape Inc.",
+      "title": "Software Development Intern",
+      "start": "Jun 2019",
+      "end": "Aug 2019",
+      "location": "Pune, Maharashtra, India",
+      "include_by_default": true,
+      "recency_rank": 3,
+      "domains": ["frontend", "fullstack"],
+      "stack": ["React", "Angular", "Jenkins", "Docker", "CI/CD"],
+      "bullets": [
+        {
+          "id": "role.onshape.b1",
+          "text": "Contributed to the development of a cloud-based engineering design platform by building scalable error-handling infrastructure and performance-optimized frontend components.",
+          "skills": ["React", "error handling"],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.onshape.b2",
+          "text": "Designed a custom data structure to detect and propagate errors across interconnected engineering models, improving system reliability and data integrity.",
+          "skills": ["Data Structures"],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.onshape.b3",
+          "text": "Developed modular frontend components using React and Angular with model validators and real-time error indicators across linked engineering views.",
+          "skills": ["React", "Angular"],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.onshape.b4",
+          "text": "Refactored legacy UI components and optimized rendering performance, improving frontend responsiveness by approximately 20%.",
+          "skills": ["React"],
+          "locked_numbers": ["20%"]
+        },
+        {
+          "id": "role.onshape.b5",
+          "text": "Collaborated with engineering and QA teams while integrating new modules into CI/CD pipelines using Jenkins and Docker.",
+          "skills": ["Jenkins", "Docker", "CI/CD"],
+          "locked_numbers": []
+        }
+      ]
+    },
+    {
+      "id": "role.adidas",
+      "company": "Adidas",
+      "title": "Campus Ambassador",
+      "start": "May 2020",
+      "end": "Mar 2021",
+      "location": "Chennai, Tamil Nadu, India",
+      "include_by_default": false,
+      "recency_rank": 4,
+      "domains": ["gtm", "community"],
+      "stack": [],
+      "bullets": [
+        {
+          "id": "role.adidas.b1",
+          "text": "Led campus outreach initiatives by coordinating student teams, managing project execution, and collaborating with brand representatives.",
+          "skills": [],
+          "locked_numbers": []
+        },
+        {
+          "id": "role.adidas.b2",
+          "text": "Organized virtual events and data-driven digital campaigns, using engagement metrics to improve outreach and community participation.",
+          "skills": [],
+          "locked_numbers": []
+        }
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "id": "project.enrichment",
+      "name": "Production AI Contact Enrichment Platform (Sprouts.ai)",
+      "include_by_default": true,
+      "domains": ["ai", "backend", "platform"],
+      "stack": ["Python", "FastAPI", "PostgreSQL", "Docker", "Kubernetes", "Redis", "SQLAlchemy", "Alembic", "GitHub Actions"],
+      "bullets": [
+        {
+          "id": "project.enrichment.b1",
+          "text": "Designed and built a production AI-powered contact enrichment platform supporting intelligent provider orchestration, workflow automation, distributed processing, authentication, caching, and scalable REST APIs.",
+          "skills": ["FastAPI", "REST APIs", "authentication", "caching"],
+          "locked_numbers": []
+        },
+        {
+          "id": "project.enrichment.b2",
+          "text": "Engineered resilient backend services integrating multiple external providers, asynchronous workflows, retry mechanisms, intelligent caching, and production-ready deployment pipelines.",
+          "skills": ["async", "caching", "CI/CD"],
+          "locked_numbers": []
+        },
+        {
+          "id": "project.enrichment.b3",
+          "text": "Implemented cloud-native backend architecture using FastAPI, SQLAlchemy, PostgreSQL, Redis, Docker, Kubernetes, GitHub Actions, and Alembic while improving platform reliability, maintainability, and infrastructure efficiency.",
+          "skills": ["FastAPI", "SQLAlchemy", "PostgreSQL", "Redis", "Docker", "Kubernetes", "GitHub Actions", "Alembic"],
+          "locked_numbers": []
+        }
+      ]
+    },
+    {
+      "id": "project.hotel",
+      "name": "Distributed Hotel Management Platform",
+      "include_by_default": true,
+      "domains": ["backend", "data", "fullstack"],
+      "stack": ["Python", "Django", "PostgreSQL", "Azure SQL"],
+      "bullets": [
+        {
+          "id": "project.hotel.b1",
+          "text": "Designed and implemented a scalable distributed database platform for hotel management using Django, PostgreSQL, and Azure SQL supporting secure multi-user operations and efficient data management.",
+          "skills": ["Django", "PostgreSQL", "Azure SQL"],
+          "locked_numbers": []
+        },
+        {
+          "id": "project.hotel.b2",
+          "text": "Optimized relational database performance, backend APIs, and application architecture while improving scalability and maintainability through modular system design.",
+          "skills": ["PostgreSQL", "REST APIs"],
+          "locked_numbers": []
+        }
+      ]
+    },
+    {
+      "id": "project.uav",
+      "name": "UAV Path Loss Prediction using Machine Learning",
+      "include_by_default": true,
+      "domains": ["ml", "data"],
+      "stack": ["Python", "Pandas", "NumPy", "Scikit-learn", "TensorFlow", "PyTorch"],
+      "bullets": [
+        {
+          "id": "project.uav.b1",
+          "text": "Developed and evaluated Random Forest, ANN, KNN, and Naive Bayes models for UAV air-to-air path loss prediction using terrain, elevation, clutter height, and communication parameters.",
+          "skills": ["Scikit-learn", "TensorFlow", "PyTorch", "Machine Learning Algorithms"],
+          "locked_numbers": []
+        },
+        {
+          "id": "project.uav.b2",
+          "text": "Performed data preprocessing, feature engineering, and model analysis using Pandas, NumPy, Matplotlib, and Seaborn to compare prediction performance across propagation scenarios.",
+          "skills": ["Pandas", "NumPy", "Matplotlib", "Seaborn", "Feature Engineering"],
+          "locked_numbers": []
+        }
+      ]
+    }
+  ],
+  "education": [
+    {
+      "id": "edu.usm",
+      "school": "University of Southern Mississippi",
+      "location": "Hattiesburg, MS",
+      "credential": "Master Of Science in Computer and Information Science",
+      "start": "Jan 2022",
+      "end": "Dec 2023"
+    },
+    {
+      "id": "edu.srm",
+      "school": "SRM Institute of Science And Technology",
+      "location": "Chennai, Tamil Nadu",
+      "credential": "Bachelor of Technology in Computer Science",
+      "start": "Jun 2017",
+      "end": "Jun 2021"
+    }
+  ],
+  "skill_groups": [
+    {
+      "id": "skills.lang",
+      "label": "Programming Languages",
+      "items": ["Python", "TypeScript", "JavaScript", "SQL", "Java", "C++", "C#", "R", "PHP", "VB.NET"]
+    },
+    {
+      "id": "skills.ai",
+      "label": "AI & Generative AI",
+      "items": [
+        "LLMs", "Generative AI", "Agentic AI", "RAG", "LangChain", "LangGraph",
+        "Azure OpenAI", "OpenAI API", "Hugging Face Transformers", "Embeddings",
+        "Semantic Search", "Vector Search", "Entity Resolution", "Prompt Engineering",
+        "AI Workflow Orchestration", "MLflow"
+      ]
+    },
+    {
+      "id": "skills.ml",
+      "label": "Machine Learning",
+      "items": [
+        "TensorFlow", "PyTorch", "Scikit-learn", "Pandas", "NumPy", "Matplotlib",
+        "Seaborn", "Feature Engineering", "Model Evaluation", "Machine Learning Algorithms"
+      ]
+    },
+    {
+      "id": "skills.backend",
+      "label": "Backend Engineering",
+      "items": [
+        "FastAPI", "Django", "Flask", "REST APIs", "SQLAlchemy", "Alembic",
+        "Pydantic", "Celery", "Microservices", "Async Programming", "OAuth2", "JWT"
+      ]
+    },
+    {
+      "id": "skills.frontend",
+      "label": "Frontend Engineering",
+      "items": [
+        "React", "Next.js", "TypeScript", "Tailwind CSS", "HTML5", "CSS3",
+        "Angular", "Vue.js", "Figma"
+      ]
+    },
+    {
+      "id": "skills.db",
+      "label": "Databases & Search",
+      "items": [
+        "PostgreSQL", "Redis", "Elasticsearch", "MongoDB", "MySQL", "Oracle",
+        "Azure SQL", "Citus"
+      ]
+    },
+    {
+      "id": "skills.cloud",
+      "label": "Cloud & DevOps",
+      "items": [
+        "Azure", "AWS", "Docker", "Kubernetes", "GitHub Actions", "Jenkins",
+        "Helm", "Terraform", "Linux", "CI/CD"
+      ]
+    },
+    {
+      "id": "skills.obs",
+      "label": "Observability",
+      "items": ["Grafana", "Prometheus", "Loki", "Tempo", "CloudWatch", "Splunk"]
+    },
+    {
+      "id": "skills.fundamentals",
+      "label": "Engineering Fundamentals",
+      "items": [
+        "Data Structures", "Algorithms", "Object-Oriented Programming", "System Design",
+        "Software Architecture", "Distributed Systems", "API Design",
+        "Cloud-Native Applications", "Authentication", "Performance Optimization", "Testing"
+      ]
+    },
+    {
+      "id": "skills.tools",
+      "label": "Developer Tools",
+      "items": [
+        "Git", "GitHub", "Postman", "Swagger/OpenAPI", "VS Code", "IntelliJ IDEA",
+        "PyCharm", "Jupyter Notebook", "Google Colab", "Docker Desktop"
+      ]
+    }
+  ],
+  "synonyms": {
+    "FastAPI": ["REST APIs", "Python APIs", "ASGI", "API development"],
+    "REST APIs": ["RESTful", "HTTP APIs", "backend APIs"],
+    "Redis": ["caching", "rate limiting", "in-memory store"],
+    "asynchronous execution": ["async", "asyncio", "background jobs", "job queues"],
+    "provider orchestration": ["multi-provider", "API orchestration", "vendor integration"],
+    "LLMs": ["large language models", "Generative AI", "OpenAI API", "prompt engineering"],
+    "RAG": ["retrieval augmented generation", "vector search"],
+    "LangChain": ["agentic AI", "LLM orchestration"],
+    "LangGraph": ["agentic AI", "AI workflow orchestration"],
+    "Kubernetes": ["K8s", "container orchestration", "cloud-native"],
+    "Docker": ["containers", "containerization"],
+    "PostgreSQL": ["Postgres", "SQL", "relational database"],
+    "SQLAlchemy": ["ORM"],
+    "OAuth2": ["authentication", "SSO"],
+    "JWT": ["authentication", "auth tokens"],
+    "GitHub Actions": ["CI/CD", "pipelines"],
+    "Jenkins": ["CI/CD"],
+    "React": ["frontend", "SPA"],
+    "TypeScript": ["JavaScript"],
+    "Django": ["Python web framework"],
+    "Flask": ["Python web framework"],
+    "Celery": ["background jobs", "task queue"],
+    "microservices": ["distributed services", "service oriented"]
+  }
+}

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Resume Tailor</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --ink: #1c1917;
+      --muted: #57534e;
+      --card: #fffdf8;
+      --line: #e7e0d3;
+      --accent: #1d4ed8;
+      --danger: #b91c1c;
+      --ok: #047857;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 15px/1.45 "IBM Plex Sans", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    header, main { max-width: 920px; margin: 0 auto; padding: 20px; }
+    header { display: flex; justify-content: space-between; align-items: baseline; }
+    h1 { font-size: 22px; margin: 0; }
+    h2 { font-size: 16px; margin: 28px 0 10px; }
+    .muted { color: var(--muted); font-size: 13px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin: 10px 0;
+    }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    input, button {
+      font: inherit;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+    }
+    button { background: var(--ink); color: white; border: 0; cursor: pointer; }
+    button.ghost { background: white; color: var(--ink); border: 1px solid var(--line); }
+    button.ok { background: var(--ok); }
+    button.danger { background: var(--danger); }
+    .due { border-color: #f59e0b; background: #fffbeb; }
+    .company { font-weight: 650; }
+    .hide { display: none; }
+    a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Resume library</h1>
+      <div class="muted">Every 7 days you’ll be asked to keep or delete each file. Download from here — this is not LinkedIn.</div>
+    </div>
+    <div id="who" class="muted"></div>
+  </header>
+  <main>
+    <section id="auth" class="card">
+      <div class="muted">Create an account so only you see your resumes.</div>
+      <div class="row" style="margin-top:10px">
+        <input id="email" type="email" placeholder="email" />
+        <input id="password" type="password" placeholder="password (8+ chars)" />
+        <button id="login">Log in</button>
+        <button class="ghost" id="register">Register</button>
+      </div>
+      <p id="auth-msg" class="muted"></p>
+    </section>
+
+    <section id="app" class="hide">
+      <div class="row">
+        <button class="ghost" id="refresh">Refresh</button>
+        <button class="ghost" id="logout">Log out</button>
+      </div>
+
+      <h2>Find jobs</h2>
+      <p class="muted">Searches Remotive, Remote OK, and Arbeitnow (free public APIs). LinkedIn and Naukri are not scraped — paste those, or use the extension on the job page.</p>
+      <div class="row">
+        <input id="job-q" placeholder="AI Engineer, FastAPI, LLM…" style="min-width:220px" />
+        <button id="job-search">Search</button>
+      </div>
+      <p id="job-msg" class="muted"></p>
+      <div id="job-results"></div>
+
+      <h2>Paste a JD</h2>
+      <textarea id="jd-text" rows="6" placeholder="Paste a job description from LinkedIn, Naukri, or a careers page…" style="width:100%;margin:8px 0"></textarea>
+      <div class="row">
+        <input id="jd-company" placeholder="Company" />
+        <input id="jd-role" placeholder="Role" />
+        <button id="jd-tailor">Tailor resume</button>
+      </div>
+      <p id="jd-msg" class="muted"></p>
+
+      <h2>Needs a decision</h2>
+      <p class="muted">Due today on the 7-day cycle. Keep snoozes the next ask by 7 days. Delete removes the file here (unlink it on LinkedIn yourself if you uploaded it).</p>
+      <div id="due"></div>
+      <h2>All resumes</h2>
+      <div id="all"></div>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const tokenKey = "rt_token";
+    let lastJobs = [];
+    const authHeader = () => ({
+      Authorization: "Bearer " + localStorage.getItem(tokenKey),
+      "Content-Type": "application/json",
+    });
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, {
+        ...opts,
+        headers: { ...(opts.headers || {}), ...authHeader() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const detail = Array.isArray(data.detail) ? data.detail[0] : data.detail;
+        throw new Error(typeof detail === "string" ? detail : (res.statusText || "Request failed"));
+      }
+      return data;
+    }
+
+    function renderList(el, items, empty) {
+      if (!items.length) {
+        el.innerHTML = `<p class="muted">${empty}</p>`;
+        return;
+      }
+      el.innerHTML = items.map((item) => `
+        <div class="card ${item.due ? "due" : ""}">
+          <div class="company">${item.prompt || item.label}</div>
+          <div class="muted">Next ask: ${item.next_review_at.slice(0,10)} · ${item.due ? "due now" : "waiting"}</div>
+          <div class="row" style="margin-top:10px">
+            ${item.has_pdf ? `<a href="/v1/library/${item.id}/download?kind=resume" data-dl="${item.id}">Download resume</a>` : ""}
+            ${item.has_cover ? `<a href="/v1/library/${item.id}/download?kind=cover" data-dl-cover="${item.id}">Cover letter</a>` : ""}
+            <button class="ok" data-keep="${item.id}">Keep (ask again in 7 days)</button>
+            <button class="danger" data-del="${item.id}">Delete</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    async function download(id, kind) {
+      const res = await fetch(`/v1/library/${id}/download?kind=${kind}`, {
+        headers: { Authorization: "Bearer " + localStorage.getItem(tokenKey) },
+      });
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") || "";
+      const match = cd.match(/filename="?([^"]+)"?/);
+      a.download = match ? match[1] : (kind === "cover" ? "cover_letter.txt" : "resume.pdf");
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    async function load() {
+      const data = await api("/v1/library");
+      renderList($("due"), data.due, "Nothing due. New resumes first appear here after 7 days.");
+      renderList($("all"), data.resumes, "No resumes yet. Tailor a job from the API or CLI.");
+    }
+
+    async function enter() {
+      $("auth").classList.add("hide");
+      $("app").classList.remove("hide");
+      const me = await api("/v1/auth/me");
+      $("who").textContent = me.user.email;
+      await load();
+    }
+
+    async function auth(path) {
+      $("auth-msg").textContent = "";
+      try {
+        const data = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: $("email").value, password: $("password").value }),
+        }).then(async (r) => {
+          const d = await r.json();
+          if (!r.ok) throw new Error(d.detail || "Auth failed");
+          return d;
+        });
+        localStorage.setItem(tokenKey, data.token);
+        await enter();
+      } catch (err) {
+        $("auth-msg").textContent = err.message;
+      }
+    }
+
+    $("login").onclick = () => auth("/v1/auth/login");
+    $("register").onclick = () => auth("/v1/auth/register");
+    $("logout").onclick = async () => {
+      await api("/v1/auth/logout", { method: "POST" }).catch(() => {});
+      localStorage.removeItem(tokenKey);
+      location.reload();
+    };
+    $("refresh").onclick = () => load();
+
+    async function tailorJob(payload, msgEl) {
+      msgEl.textContent = "Tailoring… this writes a PDF and cover letter.";
+      const data = await api("/v1/tailor", {
+        method: "POST",
+        body: JSON.stringify({ ...payload, rewrite: false, cover_letter: true }),
+      });
+      msgEl.textContent = `Done: ${data.company} / ${data.role}. Download it under All resumes.`;
+      await load();
+    }
+
+    $("job-search").onclick = async () => {
+      $("job-msg").textContent = "Searching public boards…";
+      $("job-results").innerHTML = "";
+      try {
+        const data = await api("/v1/jobs/search?q=" + encodeURIComponent($("job-q").value) + "&limit=15");
+        lastJobs = data.jobs || [];
+        if (data.errors && data.errors.length) {
+          $("job-msg").textContent = (data.note || "") + " " + data.errors.join(" ");
+        } else {
+          $("job-msg").textContent = lastJobs.length
+            ? `Found ${lastJobs.length}. Sources: Remotive, Remote OK, Arbeitnow.`
+            : (data.note || "No matches.");
+        }
+        if (!lastJobs.length) {
+          $("job-results").innerHTML = `<p class="muted">No public-API hits. Paste a JD below for India boards.</p>`;
+          return;
+        }
+        $("job-results").innerHTML = lastJobs.map((job, i) => `
+          <div class="card">
+            <div class="company">${job.company} — ${job.title}</div>
+            <div class="muted">${job.location || "Remote"} · ${job.source}${job.url ? ` · <a href="${job.url}" target="_blank" rel="noopener">open posting</a>` : ""}</div>
+            <div class="muted" style="margin-top:6px">${job.snippet || ""}</div>
+            <div class="row" style="margin-top:10px">
+              <button data-tailor-job="${i}">Tailor resume</button>
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        $("job-msg").textContent = err.message;
+      }
+    };
+
+    $("jd-tailor").onclick = async () => {
+      try {
+        await tailorJob({
+          job_description: $("jd-text").value,
+          company: $("jd-company").value,
+          target_role: $("jd-role").value,
+          extractor: "paste",
+        }, $("jd-msg"));
+      } catch (err) {
+        $("jd-msg").textContent = err.message;
+      }
+    };
+
+    $("job-q").addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") $("job-search").click();
+    });
+
+    document.body.addEventListener("click", async (ev) => {
+      const keep = ev.target.getAttribute("data-keep");
+      const del = ev.target.getAttribute("data-del");
+      const dl = ev.target.getAttribute("data-dl");
+      const dlc = ev.target.getAttribute("data-dl-cover");
+      const tj = ev.target.getAttribute("data-tailor-job");
+      try {
+        if (keep) { ev.preventDefault(); await api(`/v1/library/${keep}/keep`, { method: "POST" }); await load(); }
+        if (del) {
+          ev.preventDefault();
+          if (confirm("Delete this resume from your library? Also remove it from LinkedIn if you uploaded it.")) {
+            const out = await api(`/v1/library/${del}/delete`, { method: "POST" });
+            alert(out.linkedin_hint || "Deleted.");
+            await load();
+          }
+        }
+        if (dl) { ev.preventDefault(); await download(dl, "resume"); }
+        if (dlc) { ev.preventDefault(); await download(dlc, "cover"); }
+        if (tj != null) {
+          ev.preventDefault();
+          const job = lastJobs[Number(tj)];
+          if (!job) throw new Error("Search again, then tailor.");
+          ev.target.disabled = true;
+          try {
+            await tailorJob({
+              job_description: job.description,
+              company: job.company,
+              target_role: job.title,
+              url: job.url,
+              extractor: "jobs_api",
+            }, $("job-msg"));
+          } finally {
+            ev.target.disabled = false;
+          }
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+
+    if (localStorage.getItem(tokenKey)) {
+      enter().catch(() => localStorage.removeItem(tokenKey));
+    }
+  </script>
+</body>
+</html>
