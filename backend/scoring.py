@@ -5,8 +5,14 @@ import re
 from typing import Any
 
 from backend.fact_bank import all_skills, load_bank
+from backend.semantic import similarity as semantic_similarity
 
 TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9+#./_-]{1,}", re.I)
+
+# How much semantic similarity can nudge a node's score. Kept small so strong
+# literal keyword overlap still dominates; this only breaks ties and surfaces
+# related work the lexical pass would miss.
+SEMANTIC_WEIGHT = 3.0
 
 
 def _norm(text: str) -> str:
@@ -75,8 +81,14 @@ def select_for_jd(
     """Stage A: pick roles, bullets, projects, skill order. Original wording."""
     bank = bank or load_bank()
     query = expand_query(f"{target_role}\n{jd}", bank)
+    jd_query = f"{target_role}\n{jd}"
 
-    role_scores = [(score_node(r, query), r) for r in bank["roles"]]
+    role_nodes = bank.get("roles") or []
+    role_sims = semantic_similarity(jd_query, [_node_text(r) for r in role_nodes])
+    role_scores = [
+        (score_node(r, query) + SEMANTIC_WEIGHT * sim, r)
+        for r, sim in zip(role_nodes, role_sims)
+    ]
     role_scores.sort(key=lambda x: -x[0])
 
     selected_roles: list[dict[str, Any]] = []
@@ -107,11 +119,18 @@ def select_for_jd(
         )
 
     # Keep chronological / recency order on the page, not score order.
-    order = {r["id"]: i for i, r in enumerate(bank["roles"])}
+    order = {r["id"]: i for i, r in enumerate(bank.get("roles") or [])}
     selected_roles.sort(key=lambda r: order.get(r["id"], 99))
 
-    project_rank = {p["id"]: i for i, p in enumerate(bank["projects"])}
-    project_scores = [(score_node(p, query), p) for p in bank["projects"]]
+    project_nodes = bank.get("projects") or []
+    project_rank = {p["id"]: i for i, p in enumerate(project_nodes)}
+    project_sims = semantic_similarity(
+        jd_query, [_node_text(p) for p in project_nodes]
+    )
+    project_scores = [
+        (score_node(p, query) + SEMANTIC_WEIGHT * sim, p)
+        for p, sim in zip(project_nodes, project_sims)
+    ]
     project_scores.sort(key=lambda x: -x[0])
     selected_projects = []
     for score, project in project_scores[:3]:
@@ -130,43 +149,30 @@ def select_for_jd(
 
     groups = [
         {"id": group["id"], "label": group["label"], "items": list(group["items"])}
-        for group in bank["skill_groups"]
+        for group in bank.get("skill_groups") or []
     ]
 
     return {
-        "profile": copy.deepcopy(bank["profile"]),
-        "summary": bank["default_summary"],
+        "profile": copy.deepcopy(bank.get("profile") or {}),
+        "summary": bank.get("default_summary", ""),
         "roles": selected_roles,
         "projects": selected_projects,
-        "education": copy.deepcopy(bank["education"]),
+        "education": copy.deepcopy(bank.get("education") or []),
         "skill_groups": groups,
         "query_terms": sorted(query)[:80],
     }
 
 
 def gap_skills(jd: str, bank: dict[str, Any] | None = None) -> list[str]:
+    """Phrases this job asks for that the fact bank does not already support."""
+    from backend.jd_parser import parse_jd
+
     bank = bank or load_bank()
-    known = {_norm(s) for s in all_skills(bank)}
-    for canon, alts in (bank.get("synonyms") or {}).items():
-        known.add(_norm(canon))
-        known.update(_norm(a) for a in alts)
-    blob = _norm(jd)
-    missing: list[str] = []
-    # Only flag canonical bank-external tech-ish tokens that appear as JD must-haves
-    # is noisy. Instead: skills from a small watchlist of common JD tools not in bank.
-    watch = [
-        "Kafka", "Spark", "Airflow", "Snowflake", "BigQuery", "dbt", "Golang",
-        "Go ", "Ruby", "Scala", "Hadoop", "EMR", "SageMaker", "Vertex AI",
-        "Terraform", "Ansible", "GraphQL", "gRPC", "Kafka",
-    ]
-    # Terraform is in the bank — don't flag it.
-    bank_lower = known
-    seen: set[str] = set()
-    for raw in watch:
-        token = raw.strip()
-        if _norm(token) in bank_lower:
-            continue
-        if _norm(token) in blob and token.lower() not in seen:
-            seen.add(token.lower())
-            missing.append(token.strip())
-    return missing
+    parsed = parse_jd(jd, bank=bank)
+    gaps = list(parsed.get("must_have_external") or [])
+    seen = {g.lower() for g in gaps}
+    for phrase in parsed.get("nice_to_have_external") or []:
+        if phrase.lower() not in seen:
+            seen.add(phrase.lower())
+            gaps.append(phrase)
+    return gaps

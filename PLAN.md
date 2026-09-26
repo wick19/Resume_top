@@ -127,7 +127,7 @@ Locked fields (never invented, never mutated by the LLM):
 | Project: UAV path-loss ML | Sklearn/TF/PyTorch, feature engineering — ML/DS JDs |
 | Skills lists | Reordered per JD; items not in the bank stay out |
 
-Adjacent phrasing is allowed **only** when a node already implies the capability (example: async + Redis + enrichment pipelines → “resilient job processing / rate-limited provider I/O”). If there is no base (example: “HFT matching engine”, “FPGA”, “10 years Java”), that requirement is a **gap in the UI**, not a new bullet on the PDF.
+The same rule applies to every kind of role. The job supplies the phrases. The fact bank decides which of those phrases are already true. A close rephrase of a duty or skill already written may appear on the PDF. A product, program, or duty that is not in the bank is a gap in the UI and stays off the PDF. There is no profession list and no role mode. If any unsupported requirement is present, or the job asks for more years than the role dates cover, the skim is “likely no.” The match percent is not reduced for that.
 
 The PDF never says “tailored”, “ATS score”, “gap”, or “AI generated”.
 
@@ -310,3 +310,12 @@ Do not start the extension before the fact bank and compiler work. A pretty butt
 | 5 Cover letter + log | Done (`cover_letter.txt`, `output/applications.jsonl`) |
 | Library + 7-day keep/delete | Done (SQLite, `/` UI, per-user login, Docker) |
 | Job search | Done via public APIs only (Remotive, Remote OK, Arbeitnow). No LinkedIn/Naukri scrape. |
+| Structured JD parse | Done (`backend/jd_parser.py`). Requirement phrases are extracted from the job text and compared with the fact bank. No fixed tool list. |
+| Embeddings | Done with fallback (`backend/semantic.py` — OpenAI embeddings if a key is set, lexical cosine otherwise) |
+| Live LLM rewrite | Done (`aligner.tailor_stream`, `/v1/tailor/stream`). UI turns rewrite on. Needs `OPENAI_API_KEY` or it stays select-only. |
+| ATS target 97–98 | Done (`backend/ats.py`). Loop climbs toward 97; cap is 98. The score counts skills the fact bank already has. Unsupported job phrases do not lower it. |
+| Recruiter-audit UI | Done on `/` after each tailor. Gaps come from this job. A years miss or an unsupported requirement forces the skim to “likely no.” |
+| Keyword-stuffing cap | Done in `validator.py` (max 2 new skills per bullet; density check if skills were added) |
+| Source resume upload | Done (`POST /v1/resume/upload`). Per-user fact bank is the source of truth after login. CLI still falls back to the bundled bank. |
+| 7-day reminder | Done as a due badge + browser Notification on `/`. No OS daemon. CLI: `python -m backend review`. |
+| Hosted cloud | Config only (`fly.toml`, `render.yaml`). Not deployed. Local/Docker is the default. |

@@ -94,13 +94,21 @@ def cleanup_older_output(company: str, role: str, keep: Path) -> None:
     prune_output(keep=keep)
 
 
+# Core PDF fonts are Latin-1, which already includes accented letters.
+# Only swap hyphens, dashes, quotes, and bullets that sit outside that set.
 _PDF_REPLACEMENTS = (
     ("\u2022", "-"),
     ("\u2023", "-"),
     ("\u25e6", "-"),
     ("\u00b7", "-"),
+    ("\u2010", "-"),
+    ("\u2011", "-"),
+    ("\u2012", "-"),
     ("\u2013", "-"),
     ("\u2014", "-"),
+    ("\u2015", "-"),
+    ("\u2212", "-"),
+    ("\u00ad", "-"),
     ("\u2018", "'"),
     ("\u2019", "'"),
     ("\u201c", '"'),

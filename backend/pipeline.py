@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Iterator
 
-from backend.aligner import tailor
+from backend.aligner import tailor, tailor_stream
+from backend.ats import TARGET
 from backend.compiler import (
     cleanup_older_output,
     compile_resume,
@@ -16,22 +17,22 @@ from backend.logbook import append_application
 from backend.schemas import Audit
 
 
-def run_application(
+def _finalize(
+    doc: dict[str, Any],
+    audit_raw: dict[str, Any],
     jd: str,
-    target_role: str = "",
-    company: str = "",
-    url: str = "",
-    extractor: str = "paste",
-    rewrite: bool = True,
-    cover_letter: bool = True,
-    user_id: int | None = None,
+    target_role: str,
+    company: str,
+    url: str,
+    extractor: str,
+    cover_letter: bool,
+    user_id: int | None,
+    bank: dict[str, Any],
 ) -> dict[str, Any]:
-    doc, audit_raw = tailor(
-        jd,
-        target_role=target_role,
-        company=company,
-        rewrite=rewrite,
-    )
+    """Compile the PDF, write the cover letter + log, and store in the library.
+
+    Shared by the blocking and streaming run paths so they cannot drift.
+    """
     firm = (company or "company").strip()
     role = (target_role or "role").strip()
     revision = next_revision(firm, role)
@@ -56,7 +57,7 @@ def run_application(
     cover_mode = ""
     if cover_letter:
         letter, cover_mode = generate_cover_letter(
-            jd, role, firm, doc, rewrite=rewrite
+            jd, role, firm, doc, rewrite=audit_raw.get("mode") == "rewrite", bank=bank
         )
         cover_file = dest / "cover_letter.txt"
         cover_file.write_text(letter.strip() + "\n", encoding="utf-8")
@@ -74,24 +75,21 @@ def run_application(
             "mode": audit_raw.get("mode"),
             "cover_mode": cover_mode,
             "interview": audit_raw.get("interview"),
+            "ats_score": audit_raw.get("ats_score"),
             "gaps": audit_raw.get("gaps") or [],
         }
     )
+
     resume_id = None
     if user_id is not None:
         from backend.library import ingest_files
 
         record = ingest_files(
-            user_id,
-            firm,
-            role,
-            url,
-            str(pdf),
-            cover_path,
-            str(dest / "job_description.txt"),
-            revision=revision,
+            user_id, firm, role, url, str(pdf), cover_path,
+            str(dest / "job_description.txt"), revision=revision,
         )
         resume_id = record["id"]
+
     return {
         "status": "success",
         "output_dir": str(dest),
@@ -105,3 +103,79 @@ def run_application(
         "audit": audit_raw,
         "resume_id": resume_id,
     }
+
+
+def run_application(
+    jd: str,
+    target_role: str = "",
+    company: str = "",
+    url: str = "",
+    extractor: str = "paste",
+    rewrite: bool = True,
+    cover_letter: bool = True,
+    user_id: int | None = None,
+    llm_provider: str = "",
+) -> dict[str, Any]:
+    from backend.llm import using_provider
+    from backend.userbank import effective_bank
+
+    chosen = (llm_provider or "").strip().lower()
+    if chosen == "select":
+        rewrite = False
+        chosen = ""
+    bank = effective_bank(user_id)
+    with using_provider(chosen):
+        doc, audit_raw = tailor(
+            jd, target_role=target_role, company=company, rewrite=rewrite, bank=bank
+        )
+        return _finalize(
+            doc, audit_raw, jd, target_role, company, url, extractor,
+            cover_letter, user_id, bank,
+        )
+
+
+def run_application_stream(
+    jd: str,
+    target_role: str = "",
+    company: str = "",
+    url: str = "",
+    extractor: str = "paste",
+    rewrite: bool = True,
+    cover_letter: bool = True,
+    user_id: int | None = None,
+    llm_provider: str = "",
+) -> Iterator[dict[str, Any]]:
+    """Yield progress events during tailoring, then a final 'result' event with
+    the compiled PDF path, resume id, and audit (including the ATS score)."""
+    from backend.llm import using_provider
+    from backend.userbank import effective_bank
+
+    chosen = (llm_provider or "").strip().lower()
+    if chosen == "select":
+        rewrite = False
+        chosen = ""
+    bank = effective_bank(user_id)
+    doc: dict[str, Any] = {}
+    audit_raw: dict[str, Any] = {}
+    with using_provider(chosen):
+        for event in tailor_stream(
+            jd, target_role=target_role, company=company, rewrite=rewrite, bank=bank
+        ):
+            if event.get("type") == "done":
+                doc, audit_raw = event["doc"], event["audit"]
+            else:
+                yield event
+
+        yield {
+            "type": "progress",
+            "stage": "finalize",
+            "message": "Compiling the PDF and a short cover letter from the same facts.",
+            "pct": 96,
+            "score": audit_raw.get("ats_score"),
+            "target": TARGET,
+        }
+        result = _finalize(
+            doc, audit_raw, jd, target_role, company, url, extractor,
+            cover_letter, user_id, bank,
+        )
+    yield {"type": "result", **result}

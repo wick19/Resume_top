@@ -1,0 +1,29 @@
+# Optional host. Local or Docker is still the default.
+#   fly launch --no-deploy
+#   fly secrets set SECRET_KEY=... OPENAI_API_KEY=...
+#   fly deploy
+#
+# This is not a $0 private Dropbox. Files live on the host you pick.
+# Set SECRET_KEY before putting this on a public URL.
+
+app = "resume-tailor"
+primary_region = "iad"
+
+[build]
+
+[env]
+  HOST = "0.0.0.0"
+  PORT = "8000"
+  LIBRARY_DIR = "/data/library"
+  LIBRARY_DB = "/data/library/library.db"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[mounts]
+  source = "library_data"
+  destination = "/data"

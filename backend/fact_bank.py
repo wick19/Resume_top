@@ -64,13 +64,15 @@ def index_facts(bank: dict[str, Any] | None = None) -> dict[str, dict[str, Any]]
     return idx
 
 
-def allowed_skills_for_bullet(entry: dict[str, Any]) -> set[str]:
+def allowed_skills_for_bullet(
+    entry: dict[str, Any], bank: dict[str, Any] | None = None
+) -> set[str]:
     bullet = entry["node"]
     parent = entry["parent"]
     allowed = {s.lower() for s in (bullet.get("skills") or [])}
     allowed.update(s.lower() for s in (parent.get("stack") or []))
     original = bullet["text"]
-    for skill in all_skills():
+    for skill in all_skills(bank):
         if skill_in_text(skill, original):
             allowed.add(skill.lower())
     return allowed

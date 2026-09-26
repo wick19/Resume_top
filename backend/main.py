@@ -1,12 +1,17 @@
 from __future__ import annotations
 
+import asyncio
+import json
+import tempfile
+import threading
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, field_validator
 
 from backend.auth import (
     get_or_create_cli_user,
@@ -28,9 +33,20 @@ from backend.library import (
     list_resumes,
 )
 from backend.logbook import read_applications
-from backend.pipeline import run_application
+from backend.pipeline import run_application, run_application_stream
+from backend.resume_parser import bank_summary, build_fact_bank, extract_text
 from backend.schemas import Audit, TailorRequest, TailorResponse
+from backend.userbank import (
+    delete_user_bank,
+    effective_bank,
+    load_user_bank,
+    save_user_bank,
+    user_bank_meta,
+)
 from backend.validator import ValidationError, validate_document
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB is plenty for a resume
+ALLOWED_RESUME_SUFFIXES = {".pdf", ".docx", ".txt", ".md"}
 
 
 @asynccontextmanager
@@ -51,7 +67,14 @@ app.add_middleware(
 
 class AuthBody(BaseModel):
     email: str
-    password: str = Field(min_length=8)
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_long_enough(cls, value: str) -> str:
+        if len(value or "") < 8:
+            raise ValueError("Password must be at least 8 characters.")
+        return value
 
 
 def _bearer(authorization: str | None) -> str | None:
@@ -78,6 +101,8 @@ def optional_or_cli_user(authorization: str | None = Header(default=None)) -> di
 
 @app.get("/health")
 def health():
+    from backend.llm import status as llm_status
+
     bank = load_bank()
     return {
         "ok": True,
@@ -85,6 +110,7 @@ def health():
         "projects": len(bank["projects"]),
         "facts": sum(len(r["bullets"]) for r in bank["roles"])
         + sum(len(p["bullets"]) for p in bank["projects"]),
+        "llm": llm_status(),
     }
 
 
@@ -118,10 +144,141 @@ def auth_me(user: dict = Depends(current_user)):
     return {"user": user}
 
 
+@app.get("/v1/resume")
+def resume_status(user: dict = Depends(current_user)):
+    """Whether this user has uploaded a source-of-truth resume yet."""
+    meta = user_bank_meta(user["id"])
+    bank = effective_bank(user["id"])
+    summary = bank_summary(bank)
+    return {
+        "uploaded": meta is not None,
+        "meta": meta,
+        "summary": summary,
+        "suggested_titles": summary.get("suggested_titles") or [],
+    }
+
+
+@app.post("/v1/resume/upload")
+async def resume_upload(
+    file: UploadFile = File(...),
+    user: dict = Depends(current_user),
+):
+    """Parse an uploaded resume into this user's fact bank (source of truth)."""
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in ALLOWED_RESUME_SUFFIXES:
+        raise HTTPException(
+            status_code=400,
+            detail="Upload a PDF, DOCX, or TXT resume.",
+        )
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="The uploaded file is empty.")
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=400, detail="Resume is larger than 5 MB.")
+
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=True) as tmp:
+        tmp.write(raw)
+        tmp.flush()
+        try:
+            text = extract_text(tmp.name)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if len((text or "").strip()) < 80:
+        raise HTTPException(
+            status_code=422,
+            detail="Could not read enough text from that file. If it is a scanned "
+            "image PDF, paste the text as .txt instead.",
+        )
+
+    bank, mode = build_fact_bank(text)
+    save_user_bank(user["id"], bank, source_name=file.filename or "", mode=mode)
+    summary = bank_summary(bank)
+    warnings = []
+    if summary["roles"] == 0:
+        warnings.append("No work experience detected — check the file formatting.")
+    if not bank["profile"].get("email"):
+        warnings.append("No email detected in the resume header.")
+    return {
+        "ok": True,
+        "mode": mode,  # 'llm' or 'heuristic'
+        "summary": summary,
+        "warnings": warnings,
+    }
+
+
+@app.delete("/v1/resume")
+def resume_delete(user: dict = Depends(current_user)):
+    delete_user_bank(user["id"])
+    return {"ok": True}
+
+
+@app.post("/v1/tailor/stream")
+async def tailor_stream_endpoint(
+    payload: TailorRequest, user: dict = Depends(optional_or_cli_user)
+):
+    """Server-sent events: a live explanation of each step, then the PDF."""
+    _require_llm_provider(payload.llm_provider)
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+
+    def produce() -> None:
+        try:
+            for event in run_application_stream(
+                payload.job_description,
+                target_role=payload.target_role,
+                company=payload.company,
+                url=payload.url,
+                extractor=payload.extractor,
+                rewrite=payload.rewrite,
+                cover_letter=payload.cover_letter,
+                user_id=user["id"],
+                llm_provider=payload.llm_provider,
+            ):
+                asyncio.run_coroutine_threadsafe(queue.put(event), loop).result(timeout=120)
+            asyncio.run_coroutine_threadsafe(queue.put(None), loop).result(timeout=10)
+        except Exception as exc:
+            asyncio.run_coroutine_threadsafe(
+                queue.put({"type": "error", "detail": str(exc)}), loop
+            ).result(timeout=10)
+            asyncio.run_coroutine_threadsafe(queue.put(None), loop).result(timeout=10)
+
+    threading.Thread(target=produce, daemon=True).start()
+
+    async def gen():
+        pad = ":" + (" " * 1024) + "\n\n"
+        while True:
+            item = await queue.get()
+            if item is None:
+                break
+            yield f"data: {json.dumps(item)}\n\n{pad}"
+            await asyncio.sleep(0)
+
+    return StreamingResponse(
+        gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.get("/v1/jobs/search")
-def jobs_search(q: str, limit: int = 20, user: dict = Depends(current_user)):
+def jobs_search(
+    q: str,
+    page: int = 1,
+    page_size: int = 10,
+    limit: int | None = None,
+    user: dict = Depends(current_user),
+):
     try:
-        return search_jobs(q, limit=min(max(limit, 1), 40))
+        meta = user_bank_meta(user["id"])
+        return search_jobs(
+            q,
+            limit=limit,
+            page=page,
+            page_size=page_size if limit is None else None,
+            bank=load_user_bank(user["id"]),
+            cache_key=f"{user['id']}:{(meta or {}).get('updated_at') or 'none'}",
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -185,9 +342,19 @@ def render_master():
     return {"status": "success", "pdf_path": str(pdf), "output_dir": str(dest)}
 
 
+def _require_llm_provider(name: str) -> None:
+    from backend.llm import assert_provider
+
+    try:
+        assert_provider(name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 def _run_tailor(
     payload: TailorRequest, user: dict = Depends(optional_or_cli_user)
 ) -> TailorResponse:
+    _require_llm_provider(payload.llm_provider)
     try:
         result = run_application(
             payload.job_description,
@@ -198,6 +365,7 @@ def _run_tailor(
             rewrite=payload.rewrite,
             cover_letter=payload.cover_letter,
             user_id=user["id"],
+            llm_provider=payload.llm_provider,
         )
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
