@@ -1,0 +1,27 @@
+# Optional host. Local or Docker is still the default.
+# Create a persistent disk on Render and set SECRET_KEY + OPENAI_API_KEY
+# in the dashboard before going public.
+
+services:
+  - type: web
+    name: resume-tailor
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: "8000"
+      - key: LIBRARY_DIR
+        value: /data/library
+      - key: LIBRARY_DB
+        value: /data/library/library.db
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+    disk:
+      name: library
+      mountPath: /data
+      sizeGB: 1

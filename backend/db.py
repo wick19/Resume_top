@@ -62,5 +62,20 @@ def init_db() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_resumes_user_review
                 ON resumes(user_id, status, next_review_at);
+            CREATE TABLE IF NOT EXISTS fact_banks (
+                user_id INTEGER PRIMARY KEY,
+                data TEXT NOT NULL,
+                source_name TEXT DEFAULT '',
+                mode TEXT DEFAULT 'heuristic',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
+            CREATE TABLE IF NOT EXISTS llm_usage (
+                day TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                calls INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (day, provider)
+            );
             """
         )

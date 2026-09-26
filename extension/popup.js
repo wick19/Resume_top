@@ -175,8 +175,9 @@ async function tailor() {
       $("status").textContent = data.detail || JSON.stringify(data);
       return;
     }
+    const ats = data.audit && data.audit.ats_score != null ? `${data.audit.ats_score}%` : "n/a";
     $("status").textContent =
-      `PDF: ${data.pdf_path}\nCover: ${data.cover_letter_path || "none"}\nInterview: ${data.audit.interview}\nGaps: ${(data.audit.gaps || []).join(", ") || "none"}`;
+      `PDF: ${data.pdf_path}\nCover: ${data.cover_letter_path || "none"}\nATS: ${ats}\nInterview: ${data.audit.interview}\nGaps: ${(data.audit.gaps || []).join(", ") || "none"}`;
   } catch (err) {
     $("status").textContent = "API not reachable. Start: python -m backend.main";
   }

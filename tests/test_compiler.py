@@ -24,6 +24,26 @@ def test_compile_fpdf_accepts_unicode_punctuation(tmp_path):
     assert path.exists() and path.stat().st_size > 500
 
 
+def test_compile_fpdf_keeps_hyphenated_skill_names(tmp_path):
+    from pypdf import PdfReader
+
+    from backend.compiler import _pdf_text
+
+    hyphen = "\u2011"  # non-breaking hyphen, the one that became "?"
+    assert _pdf_text(f"production{hyphen}grade") == "production-grade"
+    assert _pdf_text(f"scikit{hyphen}learn") == "scikit-learn"
+    assert _pdf_text("José Niño") == "José Niño"
+
+    doc = default_document()
+    doc["summary"] = f"Production{hyphen}grade services with scikit{hyphen}learn."
+    path = tmp_path / "hyphen.pdf"
+    compile_fpdf(doc, path)
+    text = "\n".join(page.extract_text() or "" for page in PdfReader(path).pages)
+    assert "Production-grade" in text
+    assert "scikit-learn" in text
+    assert "?" not in text[text.find("SUMMARY"):text.find("EXPERIENCE")]
+
+
 def test_compile_fpdf_writes_default_resume(tmp_path):
     path = tmp_path / "default.pdf"
     compile_fpdf(default_document(), path)

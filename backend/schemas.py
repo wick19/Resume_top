@@ -11,6 +11,8 @@ class TailorRequest(BaseModel):
     extractor: Literal["adapter", "jsonld", "selection", "paste", "jobs_api"] = "paste"
     rewrite: bool = True
     cover_letter: bool = True
+    # auto / groq / gemini / cerebras / cloudflare / ollama / select
+    llm_provider: str = Field(default="", max_length=32)
 
 
 class Audit(BaseModel):
@@ -19,6 +21,9 @@ class Audit(BaseModel):
     gaps: list[str] = Field(default_factory=list)
     facts_used: list[str] = Field(default_factory=list)
     mode: Literal["rewrite", "select"] = "select"
+    ats_score: int = 0
+    ats_target: int = 97
+    missing_skills: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 
 

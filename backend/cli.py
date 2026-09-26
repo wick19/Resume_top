@@ -27,6 +27,13 @@ def cmd_tailor(args: argparse.Namespace) -> None:
         jd = args.jd or ""
     if len(jd.strip()) < 40:
         raise SystemExit("Pass --jd or --jd-file with the job description.")
+    from backend.llm import assert_provider
+
+    provider = "select" if args.select_only else (args.llm or "")
+    try:
+        assert_provider(provider)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     user = get_or_create_cli_user(CLI_USER_EMAIL)
     result = run_application(
         jd,
@@ -37,6 +44,7 @@ def cmd_tailor(args: argparse.Namespace) -> None:
         rewrite=not args.select_only,
         cover_letter=not args.no_cover_letter,
         user_id=user["id"],
+        llm_provider=provider,
     )
     print(result["pdf_path"])
     if result.get("cover_letter_path"):
@@ -55,13 +63,23 @@ def cmd_tailor(args: argparse.Namespace) -> None:
 def cmd_jobs(args: argparse.Namespace) -> None:
     from backend.jobs import search_jobs
 
-    result = search_jobs(args.query, limit=args.limit)
+    result = search_jobs(args.query, limit=args.limit, page=args.page)
     if result["errors"]:
         print("source warnings:", "; ".join(result["errors"]))
+    if result.get("matched_role") or result.get("keywords"):
+        role = result.get("matched_role") or result.get("title") or args.query
+        kws = ", ".join(result.get("keywords") or []) or "(none)"
+        print(f"Title context: {role}")
+        print(f"Keywords: {kws}")
     if not result["jobs"]:
         print("No public-API matches. Try another query, or paste a JD from LinkedIn/Naukri.")
         return
-    for i, job in enumerate(result["jobs"], 1):
+    start = (result["page"] - 1) * result["page_size"]
+    print(
+        f"Page {result['page']}/{result['pages']} "
+        f"({result['total']} matching)"
+    )
+    for i, job in enumerate(result["jobs"], start + 1):
         loc = f"  {job['location']}" if job["location"] else ""
         print(f"{i}. {job['company']} — {job['title']}{loc}  [{job['source']}]")
         print(f"   {job['url']}")
@@ -111,6 +129,11 @@ def main() -> None:
         help="Skip LLM rewrite; select and reorder original bullets only",
     )
     p_tailor.add_argument(
+        "--llm",
+        default="",
+        help="Rewrite backend: auto, groq, gemini, cerebras, cloudflare, ollama, or select",
+    )
+    p_tailor.add_argument(
         "--no-cover-letter",
         action="store_true",
         help="Do not write cover_letter.txt",
@@ -122,7 +145,8 @@ def main() -> None:
 
     p_jobs = sub.add_parser("jobs", help="Search public job APIs (not LinkedIn/Naukri)")
     p_jobs.add_argument("--query", "-q", required=True, help="Role or skill, e.g. AI Engineer")
-    p_jobs.add_argument("--limit", type=int, default=15)
+    p_jobs.add_argument("--limit", type=int, default=10, help="Jobs per page (max 25)")
+    p_jobs.add_argument("--page", type=int, default=1)
     p_jobs.set_defaults(func=cmd_jobs)
 
     p_review = sub.add_parser("review", help="List resumes due on the 7-day cycle")

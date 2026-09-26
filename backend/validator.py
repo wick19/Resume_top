@@ -3,35 +3,29 @@ from __future__ import annotations
 from typing import Any
 
 from backend.fact_bank import all_skills, allowed_skills_for_bullet, index_facts, load_bank
-from backend.textutil import YEARS_RE, percents, skill_in_text
+from backend.neighbors import along_the_lines
+from backend.textutil import percents, skill_in_text, year_claims
 
-KNOWN_TECH_HINTS = [
-    "kafka",
-    "spark",
-    "airflow",
-    "snowflake",
-    "bigquery",
-    "golang",
-    "ruby on rails",
-    "hadoop",
-    "sagemaker",
-    "graphql",
-    "grpc",
-    "ansible",
-    "pulumi",
-    "flink",
-    "databricks",
-    "looker",
-    "tableau",
-    "salesforce",
-]
-
+# A rewrite may add at most this many bank skills that were not already in the
+# original bullet. Stops a JD-clone dump even when every extra skill is
+# technically grounded in the parent role's stack.
+MAX_NEW_SKILLS_PER_BULLET = 2
+# If new skills were added, reject a keyword-pile sentence (skills / words).
+MAX_ADDED_SKILL_DENSITY = 0.22
 
 class ValidationError(ValueError):
     pass
 
 
-def validate_document(doc: dict[str, Any], bank: dict[str, Any] | None = None) -> None:
+def _unsupported_in(text: str, phrases: list[str]) -> list[str]:
+    return [phrase for phrase in phrases if skill_in_text(phrase, text)]
+
+
+def validate_document(
+    doc: dict[str, Any],
+    bank: dict[str, Any] | None = None,
+    jd: str = "",
+) -> None:
     bank = bank or load_bank()
     idx = index_facts(bank)
     errors: list[str] = []
@@ -43,8 +37,20 @@ def validate_document(doc: dict[str, Any], bank: dict[str, Any] | None = None) -
             errors.append(f"profile.{key} is locked and cannot change")
 
     summary = doc.get("summary") or ""
-    if YEARS_RE.search(summary):
+    original_summary = bank.get("default_summary") or ""
+    invented_years = year_claims(summary) - year_claims(original_summary)
+    if invented_years:
         errors.append("summary must not invent years of experience")
+    unsupported: list[str] = []
+    if jd:
+        from backend.scoring import gap_skills
+
+        unsupported = gap_skills(jd, bank)
+    named = _unsupported_in(summary, unsupported)
+    if named:
+        errors.append(
+            "summary names requirements with no base in the fact bank: " + ", ".join(named)
+        )
 
     for role in doc.get("roles") or []:
         rid = role.get("id")
@@ -66,7 +72,7 @@ def validate_document(doc: dict[str, Any], bank: dict[str, Any] | None = None) -
                 continue
             if bentry["parent"]["id"] != rid:
                 errors.append(f"{bid} does not belong to {rid}")
-            errors.extend(_check_bullet(bullet, bentry))
+            errors.extend(_check_bullet(bullet, bentry, bank, unsupported))
 
     for project in doc.get("projects") or []:
         pid = project.get("id")
@@ -89,7 +95,7 @@ def validate_document(doc: dict[str, Any], bank: dict[str, Any] | None = None) -
                 continue
             if bentry["parent"]["id"] != pid:
                 errors.append(f"{bid} does not belong to {pid}")
-            errors.extend(_check_bullet(bullet, bentry))
+            errors.extend(_check_bullet(bullet, bentry, bank, unsupported))
 
     src_edu = {e["id"]: e for e in bank["education"]}
     for edu in doc.get("education") or []:
@@ -119,16 +125,21 @@ def validate_document(doc: dict[str, Any], bank: dict[str, Any] | None = None) -
         raise ValidationError("; ".join(errors))
 
 
-def _check_bullet(bullet: dict[str, Any], entry: dict[str, Any]) -> list[str]:
+def _check_bullet(
+    bullet: dict[str, Any],
+    entry: dict[str, Any],
+    bank: dict[str, Any] | None = None,
+    unsupported: list[str] | None = None,
+) -> list[str]:
     errors: list[str] = []
     text = (bullet.get("text") or "").strip()
     if not text:
         errors.append(f"{bullet.get('id')} is empty")
         return errors
-    if YEARS_RE.search(text):
+    original = entry["node"]["text"]
+    if year_claims(text) - year_claims(original):
         errors.append(f"{bullet.get('id')} invents years of experience")
 
-    original = entry["node"]["text"]
     locked = set(entry["node"].get("locked_numbers") or [])
     allowed_pct = percents(original) | {p.lower() for p in locked if "%" in p}
     extra = percents(text) - allowed_pct
@@ -138,20 +149,46 @@ def _check_bullet(bullet: dict[str, Any], entry: dict[str, Any]) -> list[str]:
         if pct not in percents(text):
             errors.append(f"{bullet.get('id')} dropped locked metric {pct}")
 
-    allowed = allowed_skills_for_bullet(entry)
-    bank_skills = {s.lower() for s in all_skills()}
+    allowed = allowed_skills_for_bullet(entry, bank)
+    bank_skills = {s.lower() for s in all_skills(bank)}
+    present: list[str] = []
     for skill in sorted(bank_skills, key=len, reverse=True):
         if len(skill) < 4:
             continue
-        if skill_in_text(skill, text) and skill not in allowed:
+        if not skill_in_text(skill, text):
+            continue
+        present.append(skill)
+        if skill not in allowed and not along_the_lines(skill, allowed):
             errors.append(
                 f"{bullet.get('id')} introduces skill {skill!r} not grounded in this fact"
             )
 
-    blob = text.lower()
-    known = {s.lower() for s in all_skills()}
-    for hint in KNOWN_TECH_HINTS:
-        if hint in blob and hint not in known and hint not in original.lower():
-            errors.append(f"{bullet.get('id')} introduces ungrounded tool {hint!r}")
+    original_skills = {
+        s.lower()
+        for s in bank_skills
+        if len(s) >= 4 and skill_in_text(s, original)
+    }
+    added = [s for s in present if s not in original_skills]
+    if len(added) > MAX_NEW_SKILLS_PER_BULLET:
+        errors.append(
+            f"{bullet.get('id')} keyword-stuffs {len(added)} new skills "
+            f"(cap {MAX_NEW_SKILLS_PER_BULLET}): {added[:6]}"
+        )
+    words = max(1, len(text.split()))
+    if added and (len(present) / words) > MAX_ADDED_SKILL_DENSITY:
+        errors.append(
+            f"{bullet.get('id')} is a keyword dump ({len(present)} skills / {words} words)"
+        )
+
+    invented = [
+        phrase for phrase in (unsupported or [])
+        if skill_in_text(phrase, text) and not skill_in_text(phrase, original)
+        and not along_the_lines(phrase, allowed)
+    ]
+    if invented:
+        errors.append(
+            f"{bullet.get('id')} adds requirements with no base in this fact: "
+            + ", ".join(invented)
+        )
 
     return errors
