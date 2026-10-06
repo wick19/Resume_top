@@ -1,9 +1,9 @@
-from backend.aligner import tailor
+from backend.match.aligner import tailor
 from backend.cover_letter import generate_cover_letter, template_cover_letter, validate_cover_letter, word_count
-from backend.fact_bank import default_document, load_bank
-from backend.logbook import append_application, read_applications
+from backend.resume.fact_bank import default_document, load_bank
+from backend.store.logbook import append_application, read_applications
 from backend.pipeline import run_application
-from backend.validator import ValidationError
+from backend.resume.validator import ValidationError
 
 
 SAMPLE = """
@@ -32,8 +32,8 @@ def test_cover_letter_rejects_too_long():
 
 
 def test_select_only_pipeline_writes_pdf_and_letter(tmp_path, monkeypatch):
-    import backend.compiler as compiler
-    import backend.logbook as logbook
+    import backend.resume.compiler as compiler
+    import backend.store.logbook as logbook
     import backend.pipeline as pipeline
 
     monkeypatch.setattr(compiler, "OUTPUT_DIR", tmp_path)

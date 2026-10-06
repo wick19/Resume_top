@@ -1,6 +1,6 @@
 # Optional host. Local or Docker is still the default.
 #   fly launch --no-deploy
-#   fly secrets set SECRET_KEY=... OPENAI_API_KEY=...
+#   fly secrets set SECRET_KEY=...
 #   fly deploy
 #
 # This is not a $0 private Dropbox. Files live on the host you pick.

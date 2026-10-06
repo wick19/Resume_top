@@ -2,8 +2,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from backend.auth import get_or_create_cli_user
-from backend.db import cursor, init_db
-from backend.library import (
+from backend.store.db import cursor, init_db
+from backend.store.library import (
     delete_resume,
     due_resumes,
     ingest_files,
@@ -42,7 +42,7 @@ def test_delete_removes_file(tmp_path):
     user = get_or_create_cli_user("del@test.local")
     pdf = _pdf(tmp_path / "b.pdf")
     record = ingest_files(user["id"], "Infosys", "Backend", "", str(pdf))
-    from backend.library import get_resume
+    from backend.store.library import get_resume
 
     row = get_resume(user["id"], record["id"])
     stored_pdf = Path(row["pdf_path"])

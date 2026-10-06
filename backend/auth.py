@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 
-from backend.db import cursor, init_db
+from backend.store.db import cursor, init_db
 
 TOKEN_DAYS = 30
 
@@ -46,6 +46,26 @@ def register_user(email: str, password: str) -> dict:
         row = conn.execute(
             "SELECT id, email FROM users WHERE email = ?", (email,)
         ).fetchone()
+    return {"id": row["id"], "email": row["email"]}
+
+
+def change_password(email: str, password: str) -> dict:
+    """Replace the password for an existing account and end its sessions."""
+    init_db()
+    email = email.strip().lower()
+    if "@" not in email or len(password) < 8:
+        raise ValueError("Use a real email and a password of at least 8 characters.")
+    with cursor() as conn:
+        row = conn.execute(
+            "SELECT id, email FROM users WHERE email = ?", (email,)
+        ).fetchone()
+        if not row:
+            raise ValueError("No account for that email.")
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (hash_password(password), row["id"]),
+        )
+        conn.execute("DELETE FROM sessions WHERE user_id = ?", (row["id"],))
     return {"id": row["id"], "email": row["email"]}
 
 

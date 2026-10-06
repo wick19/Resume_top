@@ -1,4 +1,6 @@
 .venv/
+frontend/node_modules/
+frontend/dist/
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -7,4 +9,6 @@ __pycache__/
 output/
 library/
 data/library.db
+data/chrome-devtools-uuid
+.cursor/
 .DS_Store

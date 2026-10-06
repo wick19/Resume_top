@@ -93,7 +93,11 @@
   ]
 }
 
-#section("TECHNICAL EXPERTISE")
-#for group in skill-groups [
-  - #text(weight: "bold")[#group.label: ]#group.items.join(", ")
+#if skill-groups.len() > 0 [
+  #section("TECHNICAL EXPERTISE")
+  #for group in skill-groups [
+    #if group.at("items", default: ()).len() > 0 [
+      - #text(weight: "bold")[#group.label: ]#group.items.join(", ")
+    ]
+  ]
 ]

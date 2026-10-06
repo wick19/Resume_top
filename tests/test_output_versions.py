@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from backend.compiler import cleanup_older_output, next_revision, output_folder, safe_pdf_name
+from backend.resume.compiler import cleanup_older_output, next_revision, output_folder, safe_pdf_name
 
 
 def test_revisions_increment_and_old_output_is_removed(tmp_path, monkeypatch):

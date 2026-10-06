@@ -1,8 +1,8 @@
 import re
 from pathlib import Path
 
-from backend.compiler import compile_fpdf, compile_resume, safe_pdf_name
-from backend.fact_bank import default_document
+from backend.resume.compiler import compile_fpdf, compile_resume, safe_pdf_name
+from backend.resume.fact_bank import default_document
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "resume.typ"
 
@@ -27,7 +27,7 @@ def test_compile_fpdf_accepts_unicode_punctuation(tmp_path):
 def test_compile_fpdf_keeps_hyphenated_skill_names(tmp_path):
     from pypdf import PdfReader
 
-    from backend.compiler import _pdf_text
+    from backend.resume.compiler import _pdf_text
 
     hyphen = "\u2011"  # non-breaking hyphen, the one that became "?"
     assert _pdf_text(f"production{hyphen}grade") == "production-grade"

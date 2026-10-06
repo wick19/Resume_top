@@ -1,5 +1,5 @@
-from backend.fact_bank import default_document, load_bank
-from backend.validator import ValidationError, validate_document
+from backend.resume.fact_bank import default_document, load_bank
+from backend.resume.validator import ValidationError, validate_document
 
 
 def test_master_document_validates():
@@ -97,9 +97,11 @@ def test_rejects_years_invented_in_summary():
 
 
 def test_neighbor_rephrase_is_allowed_and_unrelated_tool_is_not():
-    from backend.neighbors import along_the_lines
+    from backend.match.neighbors import along_the_lines
 
     assert along_the_lines("sql", {"postgresql"})
+    assert along_the_lines("genai", {"generative ai"})
+    assert along_the_lines("llm", {"large language models"})
     assert not along_the_lines("sqlalchemy", {"postgresql"})
     assert not along_the_lines("kubernetes", {"docker"})
     assert not along_the_lines("kafka", {"postgresql", "docker"})
@@ -170,7 +172,7 @@ def test_neighbor_rephrase_is_allowed_and_unrelated_tool_is_not():
 
 
 def test_overlay_strips_invented_years_from_summary():
-    from backend.aligner import overlay_rewrite
+    from backend.match.aligner import overlay_rewrite
 
     selected = default_document()
     out = overlay_rewrite(

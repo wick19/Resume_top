@@ -4,12 +4,12 @@ import argparse
 from pathlib import Path
 
 from backend.auth import get_or_create_cli_user
-from backend.compiler import compile_resume, output_folder
+from backend.resume.compiler import compile_resume, output_folder
 from backend.config import CLI_USER_EMAIL
-from backend.fact_bank import default_document
-from backend.library import due_resumes
+from backend.resume.fact_bank import default_document
+from backend.store.library import due_resumes
 from backend.pipeline import run_application
-from backend.validator import validate_document
+from backend.resume.validator import validate_document
 
 
 def cmd_render(_args: argparse.Namespace) -> None:
@@ -27,7 +27,7 @@ def cmd_tailor(args: argparse.Namespace) -> None:
         jd = args.jd or ""
     if len(jd.strip()) < 40:
         raise SystemExit("Pass --jd or --jd-file with the job description.")
-    from backend.llm import assert_provider
+    from backend.llm.llm import assert_provider
 
     provider = "select" if args.select_only else (args.llm or "")
     try:
@@ -61,7 +61,7 @@ def cmd_tailor(args: argparse.Namespace) -> None:
 
 
 def cmd_jobs(args: argparse.Namespace) -> None:
-    from backend.jobs import search_jobs
+    from backend.jobs.jobs import search_jobs
 
     result = search_jobs(args.query, limit=args.limit, page=args.page)
     if result["errors"]:
@@ -97,7 +97,7 @@ def cmd_review(_args: argparse.Namespace) -> None:
 
 
 def cmd_log(_args: argparse.Namespace) -> None:
-    from backend.logbook import read_applications
+    from backend.store.logbook import read_applications
 
     rows = read_applications()
     if not rows:

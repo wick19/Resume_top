@@ -1,9 +1,9 @@
 from datetime import date
 
-from backend.ats import score_resume
-from backend.fact_bank import default_document, load_bank
-from backend.jd_parser import parse_jd
-from backend.tenure import covered_years, tenure_gap
+from backend.match.ats import score_resume
+from backend.resume.fact_bank import default_document, load_bank
+from backend.match.jd_parser import parse_jd
+from backend.resume.tenure import covered_years, tenure_gap
 
 
 def _bank(roles):

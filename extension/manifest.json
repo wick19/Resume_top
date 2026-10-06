@@ -1,12 +1,46 @@
 {
   "manifest_version": 3,
   "name": "Resume Tailor",
-  "version": "0.1.0",
-  "description": "Send the current job description to the local Resume Tailor API.",
+  "version": "0.2.0",
+  "description": "Tailor your resume from the job page you already have open.",
   "action": {
     "default_title": "Resume Tailor",
     "default_popup": "popup.html"
   },
-  "permissions": ["activeTab", "scripting"],
-  "host_permissions": ["http://127.0.0.1:8000/*"]
+  "permissions": ["activeTab", "scripting", "storage", "downloads"],
+  "host_permissions": ["http://127.0.0.1:8000/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://linkedin.com/*",
+        "*://*.naukri.com/*",
+        "*://naukri.com/*",
+        "*://*.indeed.com/*",
+        "*://*.indeed.co.in/*",
+        "*://*.indeed.co.uk/*",
+        "*://*.indeed.ca/*",
+        "*://*.glassdoor.com/*",
+        "*://*.glassdoor.co.in/*",
+        "*://*.glassdoor.co.uk/*",
+        "*://*.foundit.in/*",
+        "*://*.monster.com/*",
+        "*://*.monsterindia.com/*",
+        "*://*.cutshort.io/*",
+        "*://*.myworkdayjobs.com/*",
+        "*://*.greenhouse.io/*",
+        "*://*.lever.co/*",
+        "*://*.ashbyhq.com/*",
+        "*://www.google.com/search*",
+        "*://www.google.co.in/search*",
+        "*://www.google.co.uk/search*"
+      ],
+      "js": ["extract.js", "content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ]
 }
