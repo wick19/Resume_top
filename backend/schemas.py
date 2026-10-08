@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class TailorRequest(BaseModel):
-    job_description: str = Field(min_length=40)
+    job_description: str = Field(min_length=1)
     target_role: str = ""
     company: str = ""
     url: str = ""

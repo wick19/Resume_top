@@ -4,23 +4,33 @@
     <meta charset="utf-8" />
     <title>Resume Tailor</title>
     <style>
-      body { font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; width: 320px; margin: 12px; }
+      body { font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; width: 280px; margin: 12px; color: #1c1917; }
+      p { margin: 8px 0; }
       label { display: block; margin-top: 8px; font-weight: 600; }
-      input, textarea { width: 100%; box-sizing: border-box; margin-top: 4px; }
-      textarea { height: 120px; }
+      input { width: 100%; box-sizing: border-box; margin-top: 4px; }
       button { margin-top: 10px; width: 100%; padding: 8px; }
+      select { width: 100%; box-sizing: border-box; margin-top: 4px; }
       #status { margin-top: 8px; white-space: pre-wrap; }
+      .muted { color: #57534e; }
     </style>
   </head>
   <body>
     <strong>Resume Tailor</strong>
-    <label>Company <input id="company" /></label>
-    <label>Role <input id="role" /></label>
-    <label>Job description
-      <textarea id="jd" placeholder="Click Read page if this is empty"></textarea>
-    </label>
-    <button id="read">Read page</button>
-    <button id="tailor">Tailor resume</button>
+    <p class="muted">Sign in with the same account as the app. On a job page, use the Tailor button there.</p>
+    <form id="login">
+      <label>Email <input id="email" type="email" autocomplete="username" required /></label>
+      <label>Password <input id="password" type="password" autocomplete="current-password" required /></label>
+      <button type="submit">Sign in</button>
+    </form>
+    <div id="session" hidden>
+      <p id="who"></p>
+      <p id="resume" class="muted"></p>
+      <label>Model
+        <select id="model"></select>
+      </label>
+      <button id="this-tab" type="button">Tailor this tab</button>
+      <button id="signout" type="button">Sign out</button>
+    </div>
     <div id="status"></div>
     <script src="popup.js"></script>
   </body>

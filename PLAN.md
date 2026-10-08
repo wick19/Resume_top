@@ -138,29 +138,30 @@ The PDF never says “tailored”, “ATS score”, “gap”, or “AI generate
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Browser extension (Manifest V3)                        │
-│  Site adapters + generic fallback + “use selection”     │
+│  Tailor button on the open job page, signed in as you  │
+│  Reads the page. Does not call the job site.           │
 └──────────────────────────┬──────────────────────────────┘
-                           │ POST /v1/ingest
+                           │ POST /v1/tailor/stream
                            ▼
 ┌─────────────────────────────────────────────────────────┐
 │  FastAPI (localhost)                                    │
-│  1. Normalize JD JSON                                   │
-│  2. Extract required skills / title / seniority         │
-│  3. Score fact-bank nodes vs JD (deterministic overlap  │
-│     + LLM mapping constrained by bank IDs)              │
-│  4. Emit resume.json (schema-validated)                 │
-│  5. Compile PDF via Typst or pdfLaTeX                   │
+│  1. Save a run row (keeps going if the tab closes)     │
+│  2. Normalize JD JSON                                   │
+│  3. Extract required skills / title / seniority         │
+│  4. Score fact-bank nodes vs JD                         │
+│  5. Emit resume.json (schema-validated)                 │
+│  6. Compile PDF via Typst or the fpdf2 fallback         │
 └─────────────────────────────────────────────────────────┘
                            │
                            ▼
-              output/<company>_<role>_<date>/resume.pdf
+              library PDF + /result (skim, gaps, downloads)
 ```
 
 ### Why this split
 
 | Piece | Why |
 | --- | --- |
-| Extension, not a crawler | You are already on the page. Avoids login-wall scrapers and ToS mass-harvesting. Public job APIs (Remotive / Remote OK / Arbeitnow) are the only bulk search. |
+| Extension, not a crawler | You are already on the page. The button reads that posting and sends it to localhost as you. It does not log into the board or click Apply. Public job APIs (Remotive / Remote OK / Arbeitnow) are the only bulk search. |
 | Site adapters + fallback | Naukri / Cutshort / Foundit / Monster / LinkedIn DOMs differ. Unknown career sites → selected text or paste. |
 | Fact bank, not “here is my PDF, rewrite everything” | Stops new employers, new degrees, new percentages. |
 | Compiler, not LLM-written DOCX | Current resume is LaTeX; Typst/LaTeX keep layout stable and ATS-parseable. |
@@ -221,12 +222,14 @@ System rules (enforced in prompt **and** in a validator):
 5. Summary is 3–4 lines for *this* role family, not a new identity.
 6. No buzzword-only lines (“passionate team player”).
 
-UI after each run (not in the PDF):
+UI after each run (not in the PDF), on `/result`:
 
 - 10-second recruiter call: Interview? Yes/No  
 - Top 3 likely rejection reasons  
 - Skills in JD with no fact-bank support  
 - Diff of which facts were used  
+
+`/run` is only the live stream. Closing it does not stop the tailor. **Stop**, or starting another tailor, marks that id stopped and writes no PDF. The run row is what `/result` and the library read when a tailor is allowed to finish. Restarting the API stops a tailor that has not finished.
 
 That is the viral “hiring manager” prompt, turned into an API, with the resume already in context.
 
@@ -298,6 +301,7 @@ Do not start the extension before the fact bank and compiler work. A pretty butt
 | Sites | All boards via current-tab extract + paste |
 | Screening model | Public LinkedIn/ATS signals above, not a fake score formula |
 | Interview promise | Optimize for callbacks; do not market a guarantee |
+| Leaving `/run` | Does not cancel the tailor. **Stop**, or starting another tailor, marks the old id stopped and saves no PDF. A server restart also stops a live tailor. |
 
 ## Implementation status
 
@@ -306,15 +310,16 @@ Do not start the extension before the fact bank and compiler work. A pretty butt
 | 0 Fact bank | Done (`data/fact_bank.json`) |
 | 1 Compiler | Done (Typst, fpdf2 fallback) |
 | 2 Tailor API / CLI | Done (`/v1/tailor`, `python -m backend tailor`) |
-| 3–4 Extension adapters | Done (LinkedIn, Naukri, Cutshort, Foundit/Monster, JSON-LD, paste) |
+| 3–4 Extension | Done. Sign in once in the extension. A Tailor button on the open job page (LinkedIn, Naukri, Indeed, Glassdoor, Foundit, Monster, Cutshort, Workday, Greenhouse, Lever, Google Jobs) reads that page and tailors as that user. Other tabs use **Tailor this tab**. |
 | 5 Cover letter + log | Done (`cover_letter.txt`, `output/applications.jsonl`) |
 | Library + 7-day keep/delete | Done (SQLite, `/` UI, per-user login, Docker) |
 | Job search | Done via public APIs only (Remotive, Remote OK, Arbeitnow). No LinkedIn/Naukri scrape. |
-| Structured JD parse | Done (`backend/jd_parser.py`). Requirement phrases are extracted from the job text and compared with the fact bank. No fixed tool list. |
-| Embeddings | Done with fallback (`backend/semantic.py` — OpenAI embeddings if a key is set, lexical cosine otherwise) |
-| Live LLM rewrite | Done (`aligner.tailor_stream`, `/v1/tailor/stream`). UI turns rewrite on. Needs `OPENAI_API_KEY` or it stays select-only. |
-| ATS target 97–98 | Done (`backend/ats.py`). Loop climbs toward 97; cap is 98. The score counts skills the fact bank already has. Unsupported job phrases do not lower it. |
-| Recruiter-audit UI | Done on `/` after each tailor. Gaps come from this job. A years miss or an unsupported requirement forces the skim to “likely no.” |
+| Structured JD parse | Done (`backend/match/jd_parser.py`). Requirement phrases are extracted from the job text and compared with the fact bank. No fixed tool list. |
+| Embeddings | Done with fallback (`backend/match/semantic.py` — local Ollama embeddings, lexical cosine otherwise) |
+| Live LLM rewrite | Done (`aligner.tailor_stream`, `/v1/tailor/stream`). Free keys only: Groq, Gemini, Cerebras, NVIDIA. No key means select-only. |
+| ATS target 97–98 | Done (`backend/match/ats.py`). Loop climbs toward 97; cap is 98. The score counts skills the fact bank already has. Unsupported job phrases do not lower it. |
+| Run that outlives the page | Done (`tailor_runs`, `GET /v1/runs/active`, `GET /v1/runs/{id}`, `POST /v1/runs/{id}/stop`). Leaving `/run` keeps the tailor going. **Stop**, or starting another tailor, closes the old id with no PDF. **Tailoring…** follows the live id only. A finished run opens `/result`. |
+| Recruiter-audit UI | Done on `/result` when the run finishes. Gaps come from this job. A years miss or an unsupported requirement forces the skim to “likely no.” |
 | Keyword-stuffing cap | Done in `validator.py` (max 2 new skills per bullet; density check if skills were added) |
 | Source resume upload | Done (`POST /v1/resume/upload`). Per-user fact bank is the source of truth after login. CLI still falls back to the bundled bank. |
 | 7-day reminder | Done as a due badge + browser Notification on `/`. No OS daemon. CLI: `python -m backend review`. |

@@ -2,7 +2,7 @@ from urllib.parse import unquote_plus
 
 import httpx
 
-from backend.jobs import google_jobs_url, google_location, host_blocked, html_to_text, search_jobs
+from backend.jobs.jobs import google_jobs_url, google_location, host_blocked, html_to_text, search_jobs
 
 
 class _Resp:
@@ -18,6 +18,19 @@ class _Resp:
 
 def test_html_to_text_strips_tags():
     assert "FastAPI" in html_to_text("<p>Build <b>FastAPI</b> services</p>")
+    assert "<" not in html_to_text("<p>Build <b>FastAPI</b> services</p>")
+
+
+def test_html_to_text_strips_escaped_markup():
+    raw = (
+        '&lt;h2 data-start="107" data-end="126"&gt;Who is Artefact?&lt;/h2&gt; '
+        '&lt;p data-start="127"&gt;Artefact is a strategy firm.&lt;/p&gt;'
+    )
+    text = html_to_text(raw)
+    assert "<" not in text
+    assert "data-start" not in text
+    assert "Who is Artefact?" in text
+    assert "strategy firm" in text
 
 
 def test_linkedin_is_blocked():
@@ -116,7 +129,7 @@ def test_search_merges_public_apis(monkeypatch):
 
 
 def test_keywords_for_title_stay_in_that_role():
-    from backend.jobs import keywords_for_title
+    from backend.jobs.jobs import keywords_for_title
 
     bank = {
         "roles": [
@@ -155,7 +168,7 @@ def test_keywords_for_title_stay_in_that_role():
 
 
 def test_score_job_title_family_then_keywords():
-    from backend.jobs import score_job
+    from backend.jobs.jobs import score_job
 
     keywords = ["FastAPI", "LLMs", "Python"]
     ai = score_job(
@@ -310,7 +323,7 @@ def test_search_paginates_and_reuses_cache(monkeypatch):
 
 
 def test_suggested_titles_are_two_most_recent():
-    from backend.resume_parser import suggested_titles
+    from backend.resume.resume_parser import suggested_titles
 
     bank = {
         "roles": [

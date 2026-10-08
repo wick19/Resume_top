@@ -3,9 +3,9 @@ from __future__ import annotations
 import json
 from typing import Any, Iterator
 
-from backend.aligner import tailor, tailor_stream
-from backend.ats import TARGET
-from backend.compiler import (
+from backend.match.aligner import tailor, tailor_stream
+from backend.match.ats import TARGET
+from backend.resume.compiler import (
     cleanup_older_output,
     compile_resume,
     next_revision,
@@ -13,7 +13,7 @@ from backend.compiler import (
     safe_pdf_name,
 )
 from backend.cover_letter import generate_cover_letter
-from backend.logbook import append_application
+from backend.store.logbook import append_application
 from backend.schemas import Audit
 
 
@@ -82,7 +82,7 @@ def _finalize(
 
     resume_id = None
     if user_id is not None:
-        from backend.library import ingest_files
+        from backend.store.library import ingest_files
 
         record = ingest_files(
             user_id, firm, role, url, str(pdf), cover_path,
@@ -116,8 +116,8 @@ def run_application(
     user_id: int | None = None,
     llm_provider: str = "",
 ) -> dict[str, Any]:
-    from backend.llm import using_provider
-    from backend.userbank import effective_bank
+    from backend.llm.llm import using_provider
+    from backend.resume.userbank import effective_bank
 
     chosen = (llm_provider or "").strip().lower()
     if chosen == "select":
@@ -144,11 +144,12 @@ def run_application_stream(
     cover_letter: bool = True,
     user_id: int | None = None,
     llm_provider: str = "",
+    halted=None,
 ) -> Iterator[dict[str, Any]]:
     """Yield progress events during tailoring, then a final 'result' event with
     the compiled PDF path, resume id, and audit (including the ATS score)."""
-    from backend.llm import using_provider
-    from backend.userbank import effective_bank
+    from backend.llm.llm import using_provider
+    from backend.resume.userbank import effective_bank
 
     chosen = (llm_provider or "").strip().lower()
     if chosen == "select":
@@ -159,13 +160,19 @@ def run_application_stream(
     audit_raw: dict[str, Any] = {}
     with using_provider(chosen):
         for event in tailor_stream(
-            jd, target_role=target_role, company=company, rewrite=rewrite, bank=bank
+            jd, target_role=target_role, company=company, rewrite=rewrite, bank=bank, halted=halted
         ):
+            if halted and halted():
+                return
             if event.get("type") == "done":
                 doc, audit_raw = event["doc"], event["audit"]
             else:
                 yield event
 
+        if halted and halted():
+            return
+        if not doc:
+            return
         yield {
             "type": "progress",
             "stage": "finalize",

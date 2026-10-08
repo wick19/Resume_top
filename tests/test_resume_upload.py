@@ -3,7 +3,7 @@ import json
 from fastapi.testclient import TestClient
 
 from backend.main import app
-from backend.resume_parser import build_fact_bank_heuristic, extract_text
+from backend.resume.resume_parser import build_fact_bank_heuristic, extract_text
 
 client = TestClient(app)
 
@@ -96,7 +96,7 @@ Languages: Python, JavaScript, SQL
 
 
 def test_heuristic_parser_joins_pdf_wrap_lines_and_real_titles():
-    from backend.resume_parser import suggested_titles
+    from backend.resume.resume_parser import suggested_titles
 
     bank = build_fact_bank_heuristic(PDF_WRAP_RESUME)
     titles = [r["title"] for r in bank["roles"]]
@@ -150,7 +150,7 @@ Bachelor of Computer Applications 2018 – 2021
 
 
 def test_heuristic_parser_hr_titles_not_achievement_lines():
-    from backend.resume_parser import suggested_titles
+    from backend.resume.resume_parser import suggested_titles
 
     bank = build_fact_bank_heuristic(HR_PDF_RESUME)
     titles = [r["title"] for r in bank["roles"]]
@@ -172,6 +172,35 @@ def test_heuristic_parser_hr_titles_not_achievement_lines():
     assert bank["skill_groups"]
 
 
+def test_skill_headings_and_jobs_only_skills_still_fill_the_section():
+    from backend.resume.resume_parser import normalize_bank
+
+    competencies = SAMPLE_RESUME.replace("SKILLS", "Core Competencies")
+    bank = build_fact_bank_heuristic(competencies)
+    labels = [group["label"].lower() for group in bank["skill_groups"]]
+    assert any("language" in label for label in labels)
+    assert any("Python" in group["items"] for group in bank["skill_groups"])
+
+    tools = SAMPLE_RESUME.replace("SKILLS", "Tools & Technologies")
+    assert build_fact_bank_heuristic(tools)["skill_groups"]
+
+    jobs_only = normalize_bank({
+        "profile": {"name": "Jane Doe"},
+        "default_summary": "",
+        "roles": [{
+            "company": "Acme",
+            "title": "Engineer",
+            "stack": ["Python", "Kubernetes"],
+            "bullets": [{"text": "Built services.", "skills": ["FastAPI"]}],
+        }],
+        "projects": [{"name": "Demo", "stack": ["PostgreSQL"], "bullets": []}],
+        "skill_groups": [],
+    })
+    items = [item.lower() for item in jobs_only["skill_groups"][0]["items"]]
+    assert jobs_only["skill_groups"][0]["label"] == "Technical Skills"
+    assert {"python", "kubernetes", "fastapi", "postgresql"} <= set(items)
+
+
 def test_extract_text_txt(tmp_path):
     p = tmp_path / "resume.txt"
     p.write_text(SAMPLE_RESUME, encoding="utf-8")
@@ -179,8 +208,8 @@ def test_extract_text_txt(tmp_path):
 
 
 def test_upload_sets_source_of_truth_and_tailor_uses_it(tmp_path, monkeypatch):
-    import backend.compiler as compiler
-    import backend.logbook as logbook
+    import backend.resume.compiler as compiler
+    import backend.store.logbook as logbook
     import backend.pipeline as pipeline
 
     monkeypatch.setattr(compiler, "OUTPUT_DIR", tmp_path)
@@ -222,8 +251,8 @@ def test_upload_sets_source_of_truth_and_tailor_uses_it(tmp_path, monkeypatch):
 
 
 def test_tailor_stream_emits_progress_and_result(tmp_path, monkeypatch):
-    import backend.compiler as compiler
-    import backend.logbook as logbook
+    import backend.resume.compiler as compiler
+    import backend.store.logbook as logbook
     import backend.pipeline as pipeline
 
     monkeypatch.setattr(compiler, "OUTPUT_DIR", tmp_path)
@@ -256,3 +285,48 @@ def test_tailor_stream_emits_progress_and_result(tmp_path, monkeypatch):
     result = [e for e in events if e.get("type") == "result"]
     assert result and result[0]["pdf_path"].endswith(".pdf")
     assert result[0]["audit"]["ats_target"] == 97
+    assert any(e.get("type") == "run" and e.get("id") for e in events)
+
+
+def test_run_stays_readable_after_the_stream_closes(tmp_path, monkeypatch):
+    import backend.resume.compiler as compiler
+    import backend.store.logbook as logbook
+    import backend.pipeline as pipeline
+
+    monkeypatch.setattr(compiler, "OUTPUT_DIR", tmp_path)
+    monkeypatch.setattr(
+        pipeline, "output_folder", lambda company, role, revision=1: tmp_path / "run3"
+    )
+    monkeypatch.setattr(logbook, "LOG_PATH", tmp_path / "applications.jsonl")
+    monkeypatch.setattr(pipeline, "append_application", logbook.append_application)
+
+    headers = _auth()
+    events = []
+    with client.stream(
+        "POST",
+        "/v1/tailor/stream",
+        headers=headers,
+        json={
+            "job_description": "AI Engineer: Python, FastAPI, Redis, PostgreSQL, "
+            "Docker, Kubernetes, LLMs, REST APIs.",
+            "target_role": "AI Engineer",
+            "company": "Acme",
+            "extractor": "paste",
+            "rewrite": False,
+        },
+    ) as res:
+        assert res.status_code == 200
+        for line in res.iter_lines():
+            if line.startswith("data: "):
+                events.append(json.loads(line[6:]))
+
+    run_id = next(event["id"] for event in events if event.get("type") == "run")
+    saved = client.get(f"/v1/runs/{run_id}", headers=headers)
+    assert saved.status_code == 200, saved.text
+    body = saved.json()
+    assert body["status"] == "done"
+    assert body["label"] == "Acme — AI Engineer"
+    assert body["result"]["resume_id"]
+    assert body["result"]["audit"]["ats_score"] >= 0
+    assert body["log"]
+    assert client.get("/v1/runs/active", headers=headers).json()["run"] is None

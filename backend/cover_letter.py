@@ -4,10 +4,10 @@ import json
 import re
 from typing import Any
 
-from backend.llm import chat, llm_available
-from backend.fact_bank import load_bank
+from backend.llm.llm import ProviderFailed, chat, is_pinned, llm_available, resolve, skip_provider
+from backend.resume.fact_bank import load_bank
 from backend.textutil import YEARS_RE, percents
-from backend.validator import ValidationError
+from backend.resume.validator import ValidationError
 
 MAX_WORDS = 250
 
@@ -61,7 +61,7 @@ def validate_cover_letter(
     if extra:
         errors.append(f"cover letter invented metrics: {sorted(extra)}")
     if jd:
-        from backend.scoring import gap_skills
+        from backend.match.scoring import gap_skills
         from backend.textutil import skill_in_text
 
         invented = [phrase for phrase in gap_skills(jd, bank) if skill_in_text(phrase, body)]
@@ -125,24 +125,31 @@ def generate_cover_letter(
                 for r in (doc.get("roles") or [])[:3]
             ],
         }
-        try:
-            raw = chat(
-                [
-                    {"role": "system", "content": COVER_SYSTEM},
-                    {
-                        "role": "user",
-                        "content": (
-                            f"TARGET ROLE: {target_role}\nCOMPANY: {company}\n\n"
-                            f"JOB DESCRIPTION:\n{jd}\n\nRESUME JSON:\n{json.dumps(slim)}"
-                        ),
-                    },
-                ],
-                temperature=0.3,
-            )
-            payload = json.loads(raw)
-            letter = str(payload.get("cover_letter") or "").strip()
-            validate_cover_letter(letter, bank, company)
-            return letter, "rewrite"
-        except Exception:
-            pass
+        while True:
+            try:
+                raw = chat(
+                    [
+                        {"role": "system", "content": COVER_SYSTEM},
+                        {
+                            "role": "user",
+                            "content": (
+                                f"TARGET ROLE: {target_role}\nCOMPANY: {company}\n\n"
+                                f"JOB DESCRIPTION:\n{jd}\n\nRESUME JSON:\n{json.dumps(slim)}"
+                            ),
+                        },
+                    ],
+                    temperature=0.3,
+                )
+                payload = json.loads(raw)
+                letter = str(payload.get("cover_letter") or "").strip()
+                validate_cover_letter(letter, bank, company)
+                return letter, "rewrite"
+            except ProviderFailed as exc:
+                if is_pinned() or resolve() is None:
+                    break
+                skip_provider(exc.provider)
+                if resolve() is None:
+                    break
+            except Exception:
+                break
     return template_cover_letter(jd, target_role, company, doc, bank), "template"

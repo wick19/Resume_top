@@ -1,6 +1,6 @@
 # Optional host. Local or Docker is still the default.
-# Create a persistent disk on Render and set SECRET_KEY + OPENAI_API_KEY
-# in the dashboard before going public.
+# Create a persistent disk on Render and set SECRET_KEY plus the free
+# provider keys in the dashboard before going public.
 
 services:
   - type: web
@@ -19,7 +19,13 @@ services:
         value: /data/library/library.db
       - key: SECRET_KEY
         generateValue: true
-      - key: OPENAI_API_KEY
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CEREBRAS_API_KEY
         sync: false
     disk:
       name: library

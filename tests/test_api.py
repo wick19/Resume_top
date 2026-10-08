@@ -11,6 +11,18 @@ SAMPLE = (
 )
 
 
+def test_change_password_replaces_the_old_one():
+    email = "reset-box@test.local"
+    client.post("/v1/auth/register", json={"email": email, "password": "password1"})
+    changed = client.post("/v1/auth/password", json={"email": email, "password": "password2"})
+    assert changed.status_code == 200
+    assert changed.json()["token"]
+    old = client.post("/v1/auth/login", json={"email": email, "password": "password1"})
+    assert old.status_code == 401
+    new = client.post("/v1/auth/login", json={"email": email, "password": "password2"})
+    assert new.status_code == 200
+
+
 def test_login_short_password_is_readable():
     res = client.post(
         "/v1/auth/login",
@@ -19,6 +31,14 @@ def test_login_short_password_is_readable():
     assert res.status_code == 422
     msgs = " ".join(item.get("msg", "") for item in res.json()["detail"])
     assert "8 characters" in msgs
+
+
+def test_chrome_devtools_json_on_localhost():
+    res = client.get("/.well-known/appspecific/com.chrome.devtools.json")
+    assert res.status_code == 200
+    body = res.json()["workspace"]
+    assert body["root"]
+    assert len(body["uuid"]) == 36
 
 
 def test_health():
@@ -35,8 +55,8 @@ def test_health():
 
 
 def test_tailor_select_only(tmp_path, monkeypatch):
-    import backend.compiler as compiler
-    import backend.logbook as logbook
+    import backend.resume.compiler as compiler
+    import backend.store.logbook as logbook
     import backend.pipeline as pipeline
 
     monkeypatch.setattr(compiler, "OUTPUT_DIR", tmp_path)
@@ -62,8 +82,8 @@ def test_tailor_select_only(tmp_path, monkeypatch):
 
 
 def test_tailor_llm_provider_select_skips_rewrite(tmp_path, monkeypatch):
-    import backend.compiler as compiler
-    import backend.logbook as logbook
+    import backend.resume.compiler as compiler
+    import backend.store.logbook as logbook
     import backend.pipeline as pipeline
 
     monkeypatch.setattr(compiler, "OUTPUT_DIR", tmp_path)
@@ -77,7 +97,7 @@ def test_tailor_llm_provider_select_skips_rewrite(tmp_path, monkeypatch):
         called["chat"] = True
         raise AssertionError("select must not call the LLM")
 
-    monkeypatch.setattr("backend.aligner.chat", boom)
+    monkeypatch.setattr("backend.match.aligner.chat", boom)
     monkeypatch.setattr("backend.cover_letter.chat", boom)
 
     res = client.post(

@@ -1,7 +1,7 @@
-from backend.ats import CAP, score_resume
-from backend.fact_bank import default_document, load_bank
-from backend.jd_parser import detect_seniority, parse_jd
-from backend.semantic import backend_name, similarity
+from backend.match.ats import CAP, score_resume
+from backend.resume.fact_bank import default_document, load_bank
+from backend.match.jd_parser import detect_seniority, parse_jd
+from backend.match.semantic import backend_name, similarity
 
 
 def test_parse_jd_splits_must_and_nice():
@@ -25,7 +25,7 @@ def test_parse_jd_splits_must_and_nice():
 
 
 def test_requirements_come_from_the_job_not_a_profession_list():
-    from backend.jd_parser import phrase_supported
+    from backend.match.jd_parser import phrase_supported
 
     bank = load_bank()
     hr = parse_jd(
@@ -45,6 +45,57 @@ def test_requirements_come_from_the_job_not_a_profession_list():
         "bullets": [{"text": "Designed PostgreSQL schemas.", "skills": ["PostgreSQL"]}],
         "stack": ["PostgreSQL"],
     }], "skill_groups": [{"items": ["PostgreSQL"]}], "default_summary": "", "synonyms": {}, "projects": []})
+
+
+def test_boilerplate_around_a_known_skill_is_not_a_gap():
+    """Wrappers are not skills. A different product or duty still is a gap.
+    The same rule applies outside engineering."""
+    from backend.match.jd_parser import phrase_supported
+
+    bank = load_bank()
+    jd = """
+    Requirements:
+    - A customer-facing role such as sales engineer, solutions engineer
+    - Proficiency in Python, Typescript
+    - Knowledge of LLM
+    - Agentic frameworks such as OpenAI Agents SDK, DSPy
+    - Understanding of GenAI concepts
+    """
+    external = [p.lower() for p in parse_jd(jd, bank=bank)["must_have_external"]]
+    assert phrase_supported("Proficiency in Python", bank)
+    assert phrase_supported("Knowledge of LLM", bank)
+    assert phrase_supported("Understanding of GenAI concepts", bank)
+    assert "python" not in external
+    assert "typescript" not in external
+    assert not any("llm" in p and "dspy" in p for p in external)
+    assert any("sales engineer" in p for p in external)
+    assert any("solutions engineer" in p for p in external)
+    assert any("dspy" in p for p in external)
+    assert any("openai agents sdk" in p for p in external)
+    assert "agents" not in external
+
+    nurse = {
+        "default_summary": "Nurse with bedside patient assessment.",
+        "synonyms": {},
+        "projects": [],
+        "roles": [{
+            "title": "Registered Nurse",
+            "stack": [],
+            "bullets": [{
+                "text": "Completed patient assessment and wound care each shift.",
+                "skills": ["patient assessment", "wound care"],
+            }],
+        }],
+        "skill_groups": [{"items": ["patient assessment", "wound care"]}],
+    }
+    clinical = parse_jd(
+        "Requirements:\n- Proficiency in patient assessment\n- Knowledge of Epic EHR",
+        target_role="Registered Nurse",
+        bank=nurse,
+    )
+    clinical_gaps = [p.lower() for p in clinical["must_have_external"]]
+    assert not any("patient assessment" in p for p in clinical_gaps)
+    assert any("epic ehr" in p for p in clinical_gaps)
 
 
 def test_detect_seniority_variants():
